@@ -79,8 +79,6 @@ Open the URL in any modern browser – you’ve got a full‑blown Free TV.
 | 62  | 7TWO HD              |
 | 64  | 7mate HD             |
 
-*(See `channels.json` for the full list – edit as you like.)*
-
 ---
 
 ## Roadmap
