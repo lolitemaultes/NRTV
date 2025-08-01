@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Smart TV Web Server - Clean Version
+NRTV - Python Server
 Serves the HTML interface and provides TV guide data via API
 Includes audio proxy for CORS issues with ABC streams
 """
@@ -16,11 +16,9 @@ from flask import Flask, jsonify, send_from_directory, render_template_string, R
 from flask_cors import CORS
 import logging
 
-# Configure logging to reduce noise
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
 logging.getLogger('urllib3').setLevel(logging.WARNING)
 
-# Timezone setup
 TZ = ZoneInfo('Australia/Sydney')
 UTC = ZoneInfo('UTC')
 
@@ -93,13 +91,11 @@ class TVGuideLoader:
         """Load TV guide from XML sources with caching"""
         now = datetime.now(TZ)
         
-        # Return cached data if still valid
         if (self.last_loaded and 
             self.programs_cache and 
             now - self.last_loaded < self.cache_duration):
             return self.programs_cache
         
-        # XML TV guide URLs
         urls = [
             "http://xmltv.net/xml_files/Lismore.xml",
             "https://xmltv.net/xml_files/Lismore.xml", 
@@ -131,7 +127,6 @@ class TVGuideLoader:
     
     def parse_xml_guide(self, root) -> Dict[int, List[Program]]:
         """Parse XML TV guide data"""
-        # Channel ID to LCN mapping
         channel_mapping = {}
         for channel in root.findall('channel'):
             lcn_elem = channel.find('lcn')
@@ -142,7 +137,6 @@ class TVGuideLoader:
                 except ValueError:
                     continue
         
-        # Parse programs
         programs_by_channel = {}
         program_count = 0
         
@@ -154,7 +148,6 @@ class TVGuideLoader:
                 if lcn not in programs_by_channel:
                     programs_by_channel[lcn] = []
                 
-                # Parse program details
                 title = programme.find('title')
                 desc = programme.find('desc')
                 category = programme.find('category')
@@ -174,7 +167,6 @@ class TVGuideLoader:
                     programs_by_channel[lcn].append(program)
                     program_count += 1
         
-        # Sort programs by start time
         for lcn in programs_by_channel:
             programs_by_channel[lcn].sort(key=lambda p: p.start)
         
@@ -185,24 +177,18 @@ class TVGuideLoader:
         if not time_str:
             return None
         try:
-            # Handle timezone in the string
             if '+' in time_str or '-' in time_str[-5:]:
-                # Has timezone info like "20240801060000 +1000"
                 if ' ' in time_str:
-                    # Space separated timezone
                     dt_str, tz_str = time_str.split(' ', 1)
                     dt = datetime.strptime(dt_str, '%Y%m%d%H%M%S')
-                    # Parse timezone offset
                     if tz_str.startswith('+') or tz_str.startswith('-'):
                         sign = 1 if tz_str[0] == '+' else -1
                         hours = int(tz_str[1:3])
                         minutes = int(tz_str[3:5]) if len(tz_str) >= 5 else 0
                         offset = timedelta(hours=sign*hours, minutes=sign*minutes)
                         dt = dt.replace(tzinfo=timezone(offset))
-                        # Convert to Sydney time
                         return dt.astimezone(TZ)
                 else:
-                    # No space, timezone at end like "20240801060000+1000"
                     for i in range(len(time_str)-1, 0, -1):
                         if time_str[i] in '+-':
                             dt_str = time_str[:i]
@@ -215,7 +201,6 @@ class TVGuideLoader:
                             dt = dt.replace(tzinfo=timezone(offset))
                             return dt.astimezone(TZ)
             else:
-                # No timezone, assume Sydney time
                 dt = datetime.strptime(time_str[:14], '%Y%m%d%H%M%S')
                 return dt.replace(tzinfo=TZ)
         except Exception:
@@ -224,7 +209,6 @@ class TVGuideLoader:
     def generate_fallback_programs(self) -> Dict[int, List[Program]]:
         """Generate fallback program data when XML loading fails"""
         
-        # Channel LCNs that have video content
         tv_channels = [2, 20, 21, 22, 23, 24, 3, 30, 31, 32, 33, 34, 35, 36, 
                       5, 50, 51, 52, 53, 54, 56, 6, 60, 62, 64, 65, 66, 67, 68,
                       8, 80, 81, 82, 83, 84, 85, 88]
@@ -232,7 +216,6 @@ class TVGuideLoader:
         programs = {}
         now = datetime.now(TZ)
         
-        # Program templates
         program_templates = [
             ("Morning News", "Latest news and weather updates", "News"),
             ("Breakfast TV", "Morning entertainment and lifestyle", "Entertainment"),
@@ -251,23 +234,20 @@ class TVGuideLoader:
         for lcn in tv_channels:
             channel_programs = []
             
-            # Start from 2 hours ago
             start_time = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=2)
             
-            for i in range(12):  # 12 hours of programming
+            for i in range(12):
                 prog_start = start_time + timedelta(hours=i)
                 prog_stop = prog_start + timedelta(hours=1)
                 
-                # Choose program template
                 template_idx = (lcn + i) % len(program_templates)
                 title, desc, category = program_templates[template_idx]
                 
-                # Add some variation to titles
-                if i < 6:  # Morning
+                if i < 6:
                     title = f"Morning {title}"
-                elif i < 18:  # Daytime
+                elif i < 18:
                     title = f"Afternoon {title}"
-                else:  # Evening
+                else:
                     title = f"Evening {title}"
                 
                 program = Program(
@@ -284,7 +264,6 @@ class TVGuideLoader:
         
         return programs
 
-# Global TV guide loader
 tv_guide_loader = TVGuideLoader()
 
 @app.route('/')
@@ -301,7 +280,7 @@ def status():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lismore Smart TV Server</title>
+    <title>NRTV Server</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -502,7 +481,6 @@ def get_tv_guide():
     try:
         programs = tv_guide_loader.load_tv_guide()
         
-        # Convert to JSON-serializable format
         json_programs = {}
         for lcn, prog_list in programs.items():
             json_programs[lcn] = [prog.to_dict() for prog in prog_list]
@@ -769,7 +747,6 @@ if __name__ == '__main__':
     print("└" + "─" * 78 + "┘")
     print()
     
-    # Load initial TV guide data
     try:
         programs = tv_guide_loader.load_tv_guide()
         if programs:
