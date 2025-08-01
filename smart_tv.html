@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lismore Smart TV</title>
+    <title>NRTV - Free TV</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='%2300d4ff'>📺</text></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
     <style>
@@ -480,11 +480,10 @@
             opacity: 1;
         }
 
-        /* Mute indicator shown when the viewer has explicitly muted audio. */
         .mute-indicator {
             position: absolute;
-            top: 2rem;        /* lines it up with the LIVE badge */
-            right: 7rem;      /* sits just to the left of LIVE */
+            top: 2rem; 
+            right: 7rem; 
             width: 2.5rem;
             height: 2.5rem;
             border-radius: 50%;
@@ -497,7 +496,7 @@
             font-size: 1.25rem;
             color: var(--warning);
             box-shadow: var(--shadow);
-            z-index: 160;     /* above overlays, below guide-close */
+            z-index: 160;
             pointer-events: none;
         }
 
@@ -505,7 +504,6 @@
             display: none;
         }
 
-        /* MODERN TV GUIDE STYLING */
         .tv-guide {
             position: fixed;
             top: 0;
@@ -665,9 +663,6 @@
             background: var(--bg-primary);
         }
 
-        /* Wrapper for the TV channel rows. Placing the timeline indicator inside
-           this wrapper ensures that its height only spans the TV channels and
-           does not overlap the radio channels section. */
         .tv-channels-wrapper {
             position: relative;
             display: flex;
@@ -830,11 +825,6 @@
         }
 
         .time-indicator {
-            /* The timeline indicator sits absolutely within the guide's scrolling
-               container. It is anchored to the top of the grid and its height
-               will be controlled via JavaScript. Instead of toggling display,
-               we transition opacity and height so the bar gracefully
-               animates when the guide appears/disappears. */
             position: absolute;
             top: 0;
             width: 2px;
@@ -842,18 +832,11 @@
             pointer-events: none;
             border-radius: 1px;
             z-index: 10;
-            /* Initially hide the bar by collapsing its height and making it
-               transparent. Keeping it in the DOM avoids a flash when shown. */
             opacity: 0;
             height: 0;
-            /* Use a slight delay on the height transition so the bar grows
-               gracefully after the guide fades in.  Without the delay,
-               the timeline appears abruptly. */
             transition: opacity 0.35s ease, left 0.35s ease, height 0.4s ease 0.2s;
         }
 
-        /* When the TV guide is visible, fade the indicator in. The height is
-           updated dynamically via JavaScript to match the TV channels. */
         .tv-guide.visible .time-indicator {
             opacity: 1;
         }
@@ -861,10 +844,6 @@
         .time-indicator::before {
             content: '';
             position: absolute;
-            /* Place the dot flush with the top of the TV programme grid.  Setting
-               top to zero ensures the indicator never intrudes into the guide
-               header, while still allowing the dot to be visible above the
-               bar itself. */
             top: 0;
             left: -4px;
             width: 10px;
@@ -922,7 +901,6 @@
             font-weight: 500;
         }
 
-        /* SCROLLBARS */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -941,7 +919,6 @@
             background: var(--text-tertiary);
         }
 
-        /* Smooth scrolling */
         html {
             scroll-behavior: smooth;
         }
@@ -951,10 +928,8 @@
     <div id="root"></div>
 
     <script>
-        // API Configuration for server communication
         const API_BASE = window.location.origin;
         
-        // Channel data with proxy for ABC audio (CORS issues) and direct for others
         const CHANNELS = {
             // TV Channels
             2: { lcn: 2, name: "ABC TV", stream: "https://c.mjh.nz/abc-nsw.m3u8", isAudioOnly: false },
@@ -1019,10 +994,10 @@
 
         class SmartTV {
             constructor() {
-                this.currentChannelLcn = 2;  // Currently playing channel
-                this.displayChannelLcn = 2;  // Channel shown in UI (updates immediately)
-                this.targetChannelLcn = 2;   // Channel we're trying to load
-                this.currentLoadId = null;   // Unique ID for current load operation
+                this.currentChannelLcn = 2;
+                this.displayChannelLcn = 2;
+                this.targetChannelLcn = 2; 
+                this.currentLoadId = null; 
                 this.programs = {};
                 this.hasStarted = false;
                 this.loadingStream = false;
@@ -1035,10 +1010,6 @@
                 this.vizTimer = null;
                 this.vizPhase = 0;
                 this.guideTimelineIndicator = null;
-                // Track whether the user has explicitly muted audio.  The
-                // initial value is false (unmuted) regardless of the
-                // underlying media element state; the first mute toggle
-                // will explicitly set the muted properties.
                 this.isMuted = false;
                 
                 this.guideSettings = {
@@ -1060,11 +1031,10 @@
             createElements() {
                 const root = document.getElementById('root');
                 
-                // Start overlay
                 this.startOverlay = this.createElement('div', 'start-overlay', {}, [
                     this.createElement('div', 'start-content', {}, [
                         this.createElement('div', 'start-icon', {}, '📺'),
-                        this.createElement('h1', 'start-title', {}, 'Lismore Smart TV'),
+                        this.createElement('h1', 'start-title', {}, 'NRTV - Free TV'),
                         this.createElement('p', 'start-subtitle', {}, 'Click anywhere to start watching'),
                         this.createElement('div', 'server-warning', {}, [
                             this.createElement('strong', '', {}, '✨ Enhanced: '),
@@ -1074,18 +1044,15 @@
                     ])
                 ]);
                 
-                // Main container
                 this.container = this.createElement('div', 'tv-container cursor-visible', {}, [
                     this.createElement('div', 'video-container', {}, [
-                        // Video element
                         this.videoElement = this.createElement('video', 'video-player', {
                             autoplay: false,
                             muted: true,
                             playsInline: true,
                             crossorigin: "anonymous"
                         }),
-                        
-                        // Audio display
+
                         this.createElement('div', 'audio-display', {}, [
                             this.createElement('div', 'audio-container', {}, [
                                 this.createElement('div', 'audio-icon', {}, '🎵'),
@@ -1098,22 +1065,19 @@
                                 )
                             ])
                         ]),
-                        
-                        // Loading overlay
+
                         this.createElement('div', 'loading-overlay', {}, [
                             this.createElement('div', 'loading-spinner'),
                             this.createElement('div', '', {}, 'Loading stream...')
                         ]),
-                        
-                        // Hidden audio element
+
                         this.audioElement = this.createElement('audio', '', {
                             autoplay: false,
                             crossorigin: "anonymous",
                             style: 'display: none;'
                         })
                     ]),
-                    
-                    // Channel info overlay
+         
                     this.createElement('div', 'channel-info', {}, [
                         this.createElement('div', 'channel-info-content', {}, [
                             this.createElement('div', 'channel-number', {}, '2'),
@@ -1130,27 +1094,19 @@
                         ])
                     ]),
                     
-                    // Connection status
                     this.createElement('div', 'connection-status connecting', {}, 'Ready'),
                     
-                    // Controls hint
                     this.createElement('div', 'controls-hint visible', {}, 
                         '↑↓ or scroll: Change channels | G/Space: Guide | M: Mute | ESC: Close'
                     ),
                     
-                    // Error message
                     this.createElement('div', 'error-message', {}, '')
                 ]);
 
-                // Mute indicator (hidden by default).  When the user presses
-                // the mute key, this icon will appear in the bottom-right
-                // corner to signify that audio is muted.
                 this.muteIndicator = this.createElement('div', 'mute-indicator hidden', {}, '🔇');
 
-                // Append the mute indicator to the container
                 this.container.appendChild(this.muteIndicator);
                 
-                // Full TV Guide with timeline
                 this.guideElement = this.createElement('div', 'tv-guide', {});
                 
                 root.appendChild(this.startOverlay);
@@ -1191,7 +1147,6 @@
                         throw new Error('Failed to load guide');
                     }
                 } catch (error) {
-                    // Fallback: generate a basic static guide
                     try {
                         const now = new Date();
                         const startTime = new Date(now);
@@ -1237,12 +1192,10 @@
                 this.guideSettings.startTime = startTime;
                 this.guideSettings.endTime = endTime;
                 
-                // Calculate total minutes once for reuse
                 const totalMinutes = (endTime - startTime) / (1000 * 60);
                 
                 this.guideElement.innerHTML = '';
                 
-                // Header
                 const header = this.createElement('div', 'guide-header', {}, [
                     this.createElement('div', 'guide-header-left', {}, [
                         this.createElement('div', 'guide-logo', {}, '📺 TV Guide'),
@@ -1256,10 +1209,8 @@
                 
                 header.querySelector('.guide-close').addEventListener('click', () => this.hideGuide());
                 
-                // Container
                 const container = this.createElement('div', 'guide-container');
                 
-                // Time header
                 const timeHeader = this.createElement('div', 'time-header', {}, [
                     this.createElement('div', 'time-header-channel', {}, 'Channels')
                 ]);
@@ -1267,8 +1218,7 @@
                 const timeSlotsWrapper = this.createElement('div', 'time-slots-wrapper');
                 const timeSlots = this.createElement('div', 'time-slots');
                 
-                // Create time slots - fixed number to match available space
-                const slotCount = Math.ceil(totalMinutes / 30); // 30-minute slots
+                const slotCount = Math.ceil(totalMinutes / 30);
                 
                 for (let i = 0; i < slotCount; i++) {
                     const time = new Date(startTime.getTime() + i * 30 * 60 * 1000);
@@ -1284,25 +1234,17 @@
                 timeSlotsWrapper.appendChild(timeSlots);
                 timeHeader.appendChild(timeSlotsWrapper);
                 
-                // Channels container
                 const channelsContainer = this.createElement('div', 'channels-container');
                 
-                // TV channels wrapper: holds only the television channel rows. The
-                // timeline indicator is placed inside this wrapper so that its
-                // height automatically matches the TV channels and never overlaps
-                // the radio channels section.
                 const tvWrapper = this.createElement('div', 'tv-channels-wrapper');
                 
-                // TV channels
                 const tvChannels = CHANNEL_LIST.filter(lcn => !CHANNELS[lcn].isAudioOnly);
                 tvChannels.forEach(lcn => {
                     this.createChannelRow(tvWrapper, lcn, startTime, endTime, now, totalMinutes);
                 });
                 
-                // Append TV wrapper to container
                 channelsContainer.appendChild(tvWrapper);
                 
-                // Audio channels section
                 const audioChannels = CHANNEL_LIST.filter(lcn => CHANNELS[lcn].isAudioOnly);
                 if (audioChannels.length > 0) {
                     const audioSection = this.createElement('div', 'audio-channels-section', {}, [
@@ -1325,34 +1267,18 @@
                 container.appendChild(timeHeader);
                 container.appendChild(channelsContainer);
                 
-                // Calculate the current time offset in minutes and convert to pixels using
-                // the configured pixelsPerMinute value. The indicator's left position
-                // is based on the actual width of the channel list rather than a
-                // fixed rem value so it remains accurate on different font sizes.
                 const offsetMinutes = (now - startTime) / 60000;
                 const offsetPx = offsetMinutes * this.guideSettings.pixelsPerMinute;
 
-                // Determine the width of the channel header (the list of LCNs) so the
-                // timeline line aligns with the start of the program grid. If
-                // channel rows exist, use the first one's header width; otherwise
-                // fallback to 16rem converted to pixels based on current root font.
                 let channelHeaderWidth = 0;
                 const firstHeader = channelsContainer.querySelector('.channel-header');
                 if (firstHeader && firstHeader.offsetWidth) {
                     channelHeaderWidth = firstHeader.offsetWidth;
                 } else {
-                    // Compute 16rem in pixels based on root font size. When the
-                    // channels are not yet attached to the DOM the header
-                    // measurement will be zero, so fall back to the default
-                    // channel list width of 16rem.
                     const rootFont = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
                     channelHeaderWidth = 16 * rootFont;
                 }
 
-                // Create a single timeline indicator that tracks the current time. The
-                // indicator lives inside the TV channel wrapper so its height matches
-                // the number of TV channels and never overlaps the radio section. Its
-                // height will be set in updateTimelineHeight().
                 const leftPosition = channelHeaderWidth + offsetPx;
                 const timeIndicator = this.createElement('div', 'time-indicator', {
                     style: `
@@ -1364,19 +1290,12 @@
                     `
                 });
 
-                // Store reference to timeline for updates
                 this.guideTimelineIndicator = timeIndicator;
-                // Append the indicator to the TV wrapper so it only spans TV channels
                 tvWrapper.appendChild(timeIndicator);
                 
                 this.guideElement.appendChild(header);
                 this.guideElement.appendChild(container);
 
-                // We intentionally do not call updateTimelineHeight here.  The
-                // timeline indicator begins collapsed (height: 0) while the guide
-                // is hidden.  When the guide is shown via toggleGuide(),
-                // updateTimelineHeight() will be invoked to expand the
-                // indicator with a smooth animation and correctly position it.
             }
             
             createChannelRow(container, lcn, startTime, endTime, now, totalMinutes) {
@@ -1385,7 +1304,6 @@
                 
                 const row = this.createElement('div', 'channel-row');
                 
-                // Channel header
                 const channelHeader = this.createElement('div', 'channel-header', {}, [
                     this.createElement('div', 'channel-logo', {}, lcn.toString()),
                     this.createElement('div', 'channel-text', {}, [
@@ -1396,11 +1314,9 @@
                 
                 channelHeader.addEventListener('click', () => this.switchToChannel(lcn));
                 
-                // Programs row
                 const programsRow = this.createElement('div', 'programs-row');
                 const programsContainer = this.createElement('div', 'programs-container');
                 
-                // Sort programs by start time and process them to avoid overlaps
                 const sortedPrograms = programs
                     .filter(program => {
                         const progStart = new Date(program.start);
@@ -1409,7 +1325,6 @@
                     })
                     .sort((a, b) => new Date(a.start) - new Date(b.start));
                 
-                // Find the currently running program to align it with the timeline
                 const currentProgram = sortedPrograms.find(program => {
                     const progStart = new Date(program.start);
                     const progEnd = new Date(program.stop);
@@ -1418,15 +1333,13 @@
 
                 let timelineAlignmentOffset = 0;
                 
-                // If there's a current program, calculate the alignment offset
                 if (currentProgram) {
                     const progStart = new Date(currentProgram.start);
                     const scheduleOffsetMinutes = (progStart - startTime) / (1000 * 60);
                     const actualOffsetMinutes = (now - startTime) / (1000 * 60);
                     
-                    // Calculate how much the program is running ahead or behind schedule
                     const alignmentDriftMinutes = actualOffsetMinutes - scheduleOffsetMinutes;
-                    timelineAlignmentOffset = (alignmentDriftMinutes / totalMinutes) * 100; // Convert to percentage
+                    timelineAlignmentOffset = (alignmentDriftMinutes / totalMinutes) * 100;
                 }
                 
                 let lastEndPercent = 0;
@@ -1438,21 +1351,17 @@
                     const displayStart = Math.max(progStart, startTime);
                     const displayEnd = Math.min(progEnd, endTime);
                     
-                    // Calculate position as percentage
                     let leftPercent = ((displayStart - startTime) / (1000 * 60)) / totalMinutes * 100;
                     const widthPercent = ((displayEnd - displayStart) / (1000 * 60)) / totalMinutes * 100;
                     
-                    // Apply timeline alignment offset to all programs
                     leftPercent += timelineAlignmentOffset;
                     
-                    // Ensure no overlap with previous program
                     if (leftPercent < lastEndPercent) {
                         leftPercent = lastEndPercent;
                     }
                     
-                    // Calculate actual width accounting for the gap
-                    const actualWidth = Math.max(widthPercent, 6); // Minimum 6% width
-                    lastEndPercent = leftPercent + actualWidth + 0.2; // Add small gap
+                    const actualWidth = Math.max(widthPercent, 6);
+                    lastEndPercent = leftPercent + actualWidth + 0.2;
                     
                     let className = 'program-cell';
                     if (progStart <= now && now < progEnd) {
@@ -1488,7 +1397,6 @@
                 container.appendChild(row);
             }
             
-            // NEW: Get current program for a channel
             getCurrentProgram(lcn) {
                 const programs = this.programs[lcn] || [];
                 const now = new Date();
@@ -1516,7 +1424,6 @@
                 });
             }
             
-            // IMMEDIATE UI UPDATE
             switchToChannel(lcn) {
                 this.displayChannelLcn = lcn;
                 this.updateChannelDisplay(CHANNELS[lcn]);
@@ -1524,7 +1431,6 @@
                 this.loadChannelStream(lcn);
             }
             
-            // BACKGROUND STREAM LOADING
             async loadChannelStream(lcn) {
                 const channel = CHANNELS[lcn];
                 const loadId = Date.now() + Math.random();
@@ -1713,7 +1619,6 @@
                 });
             }
             
-            // ENHANCED: Now shows current program information
             updateChannelDisplay(channel) {
                 this.container.querySelector('.channel-number').textContent = channel.lcn;
                 this.container.querySelector('.channel-details h3').textContent = channel.name;
@@ -1726,22 +1631,18 @@
                 const progressBar = this.container.querySelector('.progress-bar');
                 const progressFill = this.container.querySelector('.progress-fill');
                 
-                // Get current program for this channel
                 const currentProgram = this.getCurrentProgram(channel.lcn);
                 
                 if (currentProgram) {
-                    // Show current program information
                     programTitle.textContent = currentProgram.title;
                     
                     const startTime = new Date(currentProgram.start);
                     const endTime = new Date(currentProgram.stop);
                     programTime.textContent = `${this.formatTime(startTime)} - ${this.formatTime(endTime)}`;
                     
-                    // Show progress bar with current progress
                     progressBar.style.display = 'block';
                     progressFill.style.width = `${currentProgram.progress || 0}%`;
                 } else {
-                    // No current program info available
                     if (channel.isAudioOnly) {
                         programTitle.textContent = 'Live Radio';
                         programTime.textContent = 'Now Playing';
@@ -1750,7 +1651,6 @@
                         programTime.textContent = 'Now Broadcasting';
                     }
                     
-                    // Hide progress bar when no program info
                     progressBar.style.display = 'none';
                 }
             }
@@ -1793,21 +1693,10 @@
                 statusElement.textContent = statusText[status] || 'Ready';
             }
 
-            /**
-             * Toggle the mute state of the current media elements.  When
-             * invoked, this method flips the internal isMuted flag,
-             * updates the muted property on both the video and audio
-             * elements, and shows or hides the mute indicator accordingly.
-             */
             toggleMute() {
-                // Flip the user mute state
                 this.isMuted = !this.isMuted;
-                // Apply the muted flag to both audio and video elements
-                // If the current channel is audio-only, only the audio
-                // element will be heard, but updating both is harmless.
                 this.videoElement.muted = this.isMuted;
                 this.audioElement.muted = this.isMuted;
-                // Toggle the mute indicator visibility based on isMuted
                 if (this.isMuted) {
                     this.muteIndicator.classList.remove('hidden');
                 } else {
@@ -1875,7 +1764,6 @@
                             break;
                         case 'm':
                         case 'M':
-                            // Toggle mute/unmute of the current stream
                             e.preventDefault();
                             this.toggleMute();
                             break;
@@ -1908,9 +1796,6 @@
                 this.hasStarted = true;
                 this.startOverlay.style.display = 'none';
                 this.container.classList.remove('cursor-visible');
-                // Ensure that any default muted state on the video element
-                // persists until the user toggles mute.  Pressing the
-                // mute/unmute key will unmute if currently muted.
                 this.switchToChannel(this.currentChannelLcn);
                 
                 setTimeout(() => this.hideControls(), 5000);
@@ -1933,9 +1818,6 @@
                     this.hideGuide();
                 } else {
                     this.guideElement.classList.add('visible');
-                    // Allow the layout to settle then update the timeline height and scroll the
-                    // current channel into view. Updating the height ensures the indicator
-                    // ends before the audio channels section.
                     setTimeout(() => {
                         this.updateTimelineHeight();
                         const tvChannels = CHANNEL_LIST.filter(lcn => !CHANNELS[lcn].isAudioOnly);
@@ -1952,51 +1834,25 @@
             
             hideGuide() {
                 this.guideElement.classList.remove('visible');
-                // When hiding the guide, collapse the timeline bar's height so it
-                // animates away smoothly. It will be reset when the guide is
-                // shown again via updateTimelineHeight().
                 if (this.guideTimelineIndicator) {
                     this.guideTimelineIndicator.style.height = '0px';
                 }
             }
 
-            /**
-             * Adjust the timeline indicator height to terminate before the radio channels
-             * section. This method should be called after the guide has been laid
-             * out and is visible, so that measurements are accurate.
-             */
             updateTimelineHeight() {
                 const container = this.guideElement.querySelector('.guide-container');
                 if (!container || !this.guideTimelineIndicator) return;
-                // Find the wrapper that holds only the TV channels. This wrapper
-                // determines where the timeline should start and end. If it's not
-                // present the update can be skipped.
                 const tvWrapper = container.querySelector('.tv-channels-wrapper');
                 if (!tvWrapper) return;
                 const wrapperRect = tvWrapper.getBoundingClientRect();
-                // Set the height of the indicator to match the wrapper so it ends
-                // before the radio channels section. When the guide is hidden the
-                // height may be collapsed to zero.
                 this.guideTimelineIndicator.style.height = `${wrapperRect.height}px`;
 
-                // After adjusting height, recalculate the horizontal position of the
-                // indicator based on the actual width of the program grid. This
-                // ensures the bar aligns precisely with the current time.
                 this.updateTimelinePosition();
             }
 
-            /**
-             * Calculate and set the horizontal position of the timeline indicator
-             * based on the current time and the size of the program grid. This
-             * method accounts for the width of the channel list and the total
-             * guide duration so that the indicator reflects the exact minute.
-             */
             updateTimelinePosition() {
-                // Only proceed if the timeline and start/end times are available
                 if (!this.guideTimelineIndicator || !this.guideSettings.startTime || !this.guideSettings.endTime) return;
 
-                // Determine the width of the channel header (LCN list). If the
-                // measurement fails (e.g. before attachment) fall back to 16rem.
                 let channelHeaderWidth = 0;
                 const headerEl = this.guideElement.querySelector('.channel-header');
                 if (headerEl && headerEl.offsetWidth) {
@@ -2006,11 +1862,6 @@
                     channelHeaderWidth = 16 * rootFont;
                 }
 
-                // Determine the total width of the guide's scrollable grid (excluding
-                // the channel header). Prefer using the scrollWidth of the
-                // programs-container (which spans the full six-hour range) so the
-                // indicator positions correctly regardless of how much of the
-                // grid is visible. Fallback to the visible width if necessary.
                 let gridWidth = 0;
                 const progContainer = this.guideElement.querySelector('.programs-container');
                 if (progContainer && progContainer.scrollWidth) {
@@ -2023,45 +1874,23 @@
                 }
                 if (gridWidth <= 0) return;
 
-                // Compute how far into the time range we are
                 const now = new Date();
                 const offsetMinutes = (now - this.guideSettings.startTime) / 60000;
                 const totalMinutes = (this.guideSettings.endTime - this.guideSettings.startTime) / 60000;
-                // Clamp offset to the time range to avoid overshooting
                 const clampedOffset = Math.max(0, Math.min(offsetMinutes, totalMinutes));
 
-                // Determine the width of a single 30‑minute slot by measuring
-                // the first time slot in the header.  This measurement
-                // accurately reflects the horizontal scale of the grid because
-                // each half‑hour slot is rendered with a fixed width.  Should
-                // this measurement fail (e.g. before layout), we fall back to
-                // computing the slot width from the overall grid width and
-                // number of slots.
                 let slotWidth = 0;
                 const timeSlotEl = this.guideElement.querySelector('.time-slots .time-slot');
                 if (timeSlotEl && timeSlotEl.offsetWidth) {
                     slotWidth = timeSlotEl.offsetWidth;
                 }
                 if (!slotWidth) {
-                    // Fallback: derive slot width by dividing the grid width by
-                    // the number of half‑hour slots.  totalMinutes/30 gives
-                    // the number of slots in the guide.
                     slotWidth = gridWidth / (totalMinutes / 30);
                 }
                 if (!slotWidth) return;
 
-                // Compute the pixel value for a single minute.  Each slot
-                // represents 30 minutes; dividing its width by 30 yields
-                // pixels per minute.
                 const pixelsPerMinute = slotWidth / 30;
-                // Calculate the horizontal offset of the indicator by
-                // multiplying the number of minutes since startTime by the
-                // pixel rate.  We then shift the line to the right by the
-                // channel header width so that it aligns with the programme grid.
                 let leftPx = channelHeaderWidth + clampedOffset * pixelsPerMinute;
-                // Clamp the indicator within the grid boundaries.  The far
-                // right boundary is channelHeaderWidth plus the total grid
-                // width; the far left boundary is the start of the grid.
                 const maxLeft = channelHeaderWidth + slotWidth * (totalMinutes / 30);
                 if (leftPx > maxLeft) leftPx = maxLeft;
                 if (leftPx < channelHeaderWidth) leftPx = channelHeaderWidth;
@@ -2106,13 +1935,9 @@
                         if (dateElement) dateElement.textContent = this.formatDate(now);
                         
                         if (this.guideSettings.startTime) {
-                            // Update the timeline indicator's position to reflect the
-                            // current time. This method calculates the correct
-                            // offset based on the grid width and current time.
                             this.updateTimelinePosition();
                         }
                         
-                        // Update current channel display if channel info is visible
                         const channelInfo = this.container.querySelector('.channel-info');
                         if (channelInfo && channelInfo.classList.contains('visible')) {
                             this.updateChannelDisplay(CHANNELS[this.displayChannelLcn]);
@@ -2128,11 +1953,9 @@
             }
         }
 
-        // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
             window.smartTV = new SmartTV();
             
-            // Prevent context menu and text selection
             document.addEventListener('contextmenu', e => e.preventDefault());
             document.addEventListener('selectstart', e => {
                 if (!e.target.closest('.tv-guide')) {
@@ -2141,7 +1964,6 @@
             });
         });
 
-        // Global error handling
         window.addEventListener('error', (e) => {
             console.error('Global error:', e.error);
         });
