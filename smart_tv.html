@@ -1,0 +1,2155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lismore Smart TV</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='%2300d4ff'>📺</text></svg>">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0070f3;
+            --primary-light: #3291ff;
+            --secondary: #00d9ff;
+            --accent: #7c3aed;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --bg-tertiary: #141414;
+            --bg-quaternary: #1f1f1f;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --text-tertiary: #71717a;
+            --border: rgba(255, 255, 255, 0.1);
+            --glass: rgba(255, 255, 255, 0.05);
+            --shadow: 0 4px 32px rgba(0, 0, 0, 0.5);
+            --shadow-lg: 0 8px 64px rgba(0, 0, 0, 0.7);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            cursor: none;
+            user-select: none;
+            font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+        }
+
+        .tv-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: var(--bg-primary);
+        }
+
+        .video-container {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-player {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: var(--bg-primary);
+        }
+
+        .audio-display {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, var(--accent) 0%, transparent 60%),
+                radial-gradient(circle at 80% 20%, var(--primary) 0%, transparent 60%),
+                radial-gradient(circle at 40% 40%, var(--secondary) 0%, transparent 60%),
+                linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .audio-display.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .audio-container {
+            text-align: center;
+            padding: 4rem;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            backdrop-filter: blur(24px);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .audio-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--secondary), transparent);
+        }
+
+        .audio-icon {
+            font-size: 5rem;
+            margin-bottom: 2rem;
+            animation: musicPulse 4s ease-in-out infinite;
+            filter: drop-shadow(0 0 20px var(--secondary));
+        }
+
+        @keyframes musicPulse {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+
+        .audio-channel-name {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .audio-channel-lcn {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--secondary);
+            background: rgba(0, 217, 255, 0.1);
+            padding: 1rem 2rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(0, 217, 255, 0.2);
+        }
+
+        .audio-visualizer {
+            display: flex;
+            gap: 3px;
+            align-items: end;
+            justify-content: center;
+            height: 4rem;
+        }
+
+        .audio-bar {
+            width: 4px;
+            background: linear-gradient(to top, var(--primary), var(--secondary));
+            border-radius: 2px;
+            transition: height 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            padding: 2rem 2.5rem;
+            border-radius: 20px;
+            text-align: center;
+            border: 1px solid var(--border);
+            z-index: 200;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .loading-overlay.visible {
+            opacity: 1;
+        }
+
+        .loading-spinner {
+            width: 3rem;
+            height: 3rem;
+            border: 3px solid var(--glass);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .channel-info {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 28rem;
+            backdrop-filter: blur(24px);
+            transform: translateY(-1rem);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+
+        .channel-info.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .channel-info-content {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .channel-number {
+            background: rgba(0, 112, 243, 0.1);
+            border: 1px solid rgba(0, 112, 243, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            min-width: 5rem;
+            text-align: center;
+        }
+
+        .channel-details h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .audio-indicator {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: none;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .program-title {
+            color: var(--success);
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .program-time {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), var(--secondary));
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .guide-hint {
+            color: var(--text-tertiary);
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .connection-status {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            z-index: 150;
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+        }
+
+        .connection-status.connected {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .connection-status.connecting {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border-color: rgba(245, 158, 11, 0.2);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .connection-status.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: 
+                radial-gradient(circle at 20% 80%, var(--accent) 0%, transparent 60%),
+                radial-gradient(circle at 80% 20%, var(--primary) 0%, transparent 60%),
+                linear-gradient(135deg, #0a0a0a, #1f1f1f);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            cursor: pointer;
+        }
+
+        .start-content {
+            text-align: center;
+            padding: 4rem;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            backdrop-filter: blur(24px);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .start-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        }
+
+        .start-icon {
+            font-size: 6rem;
+            margin-bottom: 1rem;
+            animation: float 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 30px var(--primary));
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-0.5rem); }
+        }
+
+        .start-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .start-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            font-weight: 400;
+        }
+
+        .server-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 16px;
+            padding: 1rem 1.5rem;
+            margin-top: 1.5rem;
+            max-width: 32rem;
+        }
+
+        .server-warning strong {
+            color: var(--warning);
+        }
+
+        .start-button {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 16px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 1.5rem;
+            font-family: inherit;
+        }
+
+        .start-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 112, 243, 0.4);
+        }
+
+        .controls-hint {
+            position: absolute;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            padding: 1rem 1.5rem;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--border);
+        }
+
+        .controls-hint.visible {
+            opacity: 1;
+        }
+
+        .cursor-visible {
+            cursor: auto !important;
+        }
+
+        .cursor-visible * {
+            cursor: auto !important;
+        }
+
+        video::-webkit-media-controls {
+            display: none !important;
+        }
+
+        .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(239, 68, 68, 0.9);
+            backdrop-filter: blur(24px);
+            color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 16px;
+            text-align: center;
+            z-index: 300;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+        }
+
+        .error-message.visible {
+            opacity: 1;
+        }
+
+        /* Mute indicator shown when the viewer has explicitly muted audio. */
+        .mute-indicator {
+            position: absolute;
+            top: 2rem;        /* lines it up with the LIVE badge */
+            right: 7rem;      /* sits just to the left of LIVE */
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            color: var(--warning);
+            box-shadow: var(--shadow);
+            z-index: 160;     /* above overlays, below guide-close */
+            pointer-events: none;
+        }
+
+        .mute-indicator.hidden {
+            display: none;
+        }
+
+        /* MODERN TV GUIDE STYLING */
+        .tv-guide {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: 
+                radial-gradient(circle at 20% 80%, var(--accent) 0%, transparent 70%),
+                radial-gradient(circle at 80% 20%, var(--primary) 0%, transparent 70%),
+                linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+            z-index: 1000;
+            transform: translateY(-100%);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            cursor: auto;
+        }
+
+        .tv-guide * {
+            cursor: auto;
+        }
+
+        .tv-guide.visible {
+            transform: translateY(0);
+        }
+
+        .guide-header {
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            padding: 2rem 3rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+        }
+
+        .guide-header-left {
+            display: flex;
+            align-items: center;
+            gap: 3rem;
+        }
+
+        .guide-logo {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .guide-time {
+            font-size: 2rem;
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .guide-date {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            font-weight: 500;
+        }
+
+        .guide-close {
+            background: linear-gradient(135deg, var(--error), #dc2626);
+            border: none;
+            color: white;
+            font-size: 1.25rem;
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: inherit;
+        }
+
+        .guide-close:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .guide-container {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-primary);
+        }
+
+        .time-header {
+            height: 4rem;
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .time-header-channel {
+            width: 16rem;
+            min-width: 16rem;
+            background: var(--bg-quaternary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .time-slots-wrapper {
+            flex: 1;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .time-slots {
+            display: flex;
+            height: 100%;
+            width: 100%;
+        }
+
+        .time-slot {
+            flex: 1;
+            min-width: 8rem;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            position: relative;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .time-slot:hover {
+            background: var(--glass);
+        }
+
+        .time-slot.current {
+            background: rgba(0, 112, 243, 0.1);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .channels-container {
+            flex: 1;
+            overflow: auto;
+            background: var(--bg-primary);
+        }
+
+        /* Wrapper for the TV channel rows. Placing the timeline indicator inside
+           this wrapper ensures that its height only spans the TV channels and
+           does not overlap the radio channels section. */
+        .tv-channels-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .channel-row {
+            display: flex;
+            height: 6rem;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .channel-row:hover {
+            background: var(--glass);
+        }
+
+        .channel-header {
+            width: 16rem;
+            min-width: 16rem;
+            background: var(--bg-quaternary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 1.5rem;
+            gap: 1rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .channel-header:hover {
+            background: var(--bg-tertiary);
+            border-right-color: var(--primary);
+        }
+
+        .channel-logo {
+            width: 3rem;
+            height: 3rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            font-size: 1.125rem;
+        }
+
+        .channel-text {
+            flex: 1;
+        }
+
+        .channel-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .channel-number-small {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+        }
+
+        .programs-row {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .programs-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            display: flex;
+        }
+
+        .program-cell {
+            position: absolute;
+            top: 0.5rem;
+            height: 5rem;
+            padding: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            z-index: 1;
+            margin-right: 2px;
+            box-sizing: border-box;
+        }
+
+        .program-cell:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+            z-index: 5;
+            border-color: var(--primary);
+        }
+
+        .program-cell.live {
+            background: linear-gradient(135deg, var(--success), #059669);
+            border-left: 3px solid #34d399;
+        }
+
+        .program-cell.past {
+            background: var(--bg-quaternary);
+            opacity: 0.7;
+        }
+
+        .program-cell.future {
+            background: var(--bg-tertiary);
+        }
+
+        .program-cell-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            line-height: 1.2;
+        }
+
+        .program-cell-time {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.125rem;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .program-cell-duration {
+            font-size: 0.6rem;
+            color: var(--text-tertiary);
+            white-space: nowrap;
+        }
+
+        .live-indicator {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: var(--error);
+            color: white;
+            font-size: 0.625rem;
+            font-weight: 700;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            animation: livePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .time-indicator {
+            /* The timeline indicator sits absolutely within the guide's scrolling
+               container. It is anchored to the top of the grid and its height
+               will be controlled via JavaScript. Instead of toggling display,
+               we transition opacity and height so the bar gracefully
+               animates when the guide appears/disappears. */
+            position: absolute;
+            top: 0;
+            width: 2px;
+            background: var(--error);
+            pointer-events: none;
+            border-radius: 1px;
+            z-index: 10;
+            /* Initially hide the bar by collapsing its height and making it
+               transparent. Keeping it in the DOM avoids a flash when shown. */
+            opacity: 0;
+            height: 0;
+            /* Use a slight delay on the height transition so the bar grows
+               gracefully after the guide fades in.  Without the delay,
+               the timeline appears abruptly. */
+            transition: opacity 0.35s ease, left 0.35s ease, height 0.4s ease 0.2s;
+        }
+
+        /* When the TV guide is visible, fade the indicator in. The height is
+           updated dynamically via JavaScript to match the TV channels. */
+        .tv-guide.visible .time-indicator {
+            opacity: 1;
+        }
+
+        .time-indicator::before {
+            content: '';
+            position: absolute;
+            /* Place the dot flush with the top of the TV programme grid.  Setting
+               top to zero ensures the indicator never intrudes into the guide
+               header, while still allowing the dot to be visible above the
+               bar itself. */
+            top: 0;
+            left: -4px;
+            width: 10px;
+            height: 10px;
+            background: var(--error);
+            border-radius: 50%;
+        }
+
+        .audio-channels-section {
+            background: var(--bg-quaternary);
+            border-top: 1px solid var(--border);
+            padding: 2rem;
+        }
+
+        .audio-section-title {
+            color: var(--warning);
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .audio-channels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+            gap: 1rem;
+        }
+
+        .audio-channel-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .audio-channel-card:hover {
+            background: var(--glass);
+            border-color: var(--warning);
+            transform: translateY(-2px);
+        }
+
+        .audio-channel-number {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--warning);
+            margin-bottom: 0.25rem;
+        }
+
+        .audio-channel-name {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* SCROLLBARS */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-quaternary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-tertiary);
+        }
+
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script>
+        // API Configuration for server communication
+        const API_BASE = window.location.origin;
+        
+        // Channel data with proxy for ABC audio (CORS issues) and direct for others
+        const CHANNELS = {
+            // TV Channels
+            2: { lcn: 2, name: "ABC TV", stream: "https://c.mjh.nz/abc-nsw.m3u8", isAudioOnly: false },
+            20: { lcn: 20, name: "ABC TV HD", stream: "https://c.mjh.nz/abc-nsw.m3u8", isAudioOnly: false },
+            21: { lcn: 21, name: "ABC News", stream: "https://c.mjh.nz/abc-news.m3u8", isAudioOnly: false },
+            22: { lcn: 22, name: "ABC Kids/Family", stream: "https://c.mjh.nz/abc-kids.m3u8", isAudioOnly: false },
+            23: { lcn: 23, name: "ABC Entertains", stream: "https://c.mjh.nz/abc-me.m3u8", isAudioOnly: false },
+            24: { lcn: 24, name: "ABC News", stream: "https://c.mjh.nz/abc-news.m3u8", isAudioOnly: false },
+            3: { lcn: 3, name: "SBS One", stream: "https://i.mjh.nz/.r/sbs-sbst.m3u8", isAudioOnly: false },
+            30: { lcn: 30, name: "SBS One HD", stream: "https://i.mjh.nz/.r/sbs-sbst.m3u8", isAudioOnly: false },
+            31: { lcn: 31, name: "SBS Viceland HD", stream: "https://i.mjh.nz/.r/sbs-2syd.m3u8", isAudioOnly: false },
+            32: { lcn: 32, name: "SBS World Movies", stream: "https://i.mjh.nz/.r/sbs-4syd.m3u8", isAudioOnly: false },
+            33: { lcn: 33, name: "SBS Food", stream: "https://i.mjh.nz/.r/sbs-3syd.m3u8", isAudioOnly: false },
+            34: { lcn: 34, name: "NITV HD", stream: "https://i.mjh.nz/.r/sbs-5nsw.m3u8", isAudioOnly: false },
+            35: { lcn: 35, name: "SBS WorldWatch", stream: "https://i.mjh.nz/.r/sbs-6nat.m3u8", isAudioOnly: false },
+            36: { lcn: 36, name: "NITV", stream: "https://i.mjh.nz/.r/sbs-5nsw.m3u8", isAudioOnly: false },
+            5: { lcn: 5, name: "10 HD Northern NSW", stream: "https://i.mjh.nz/.r/10-nsw.m3u8", isAudioOnly: false },
+            50: { lcn: 50, name: "10 HD", stream: "https://i.mjh.nz/.r/10-nsw.m3u8", isAudioOnly: false },
+            51: { lcn: 51, name: "10 Drama", stream: "https://i.mjh.nz/.r/10bold-nsw.m3u8", isAudioOnly: false },
+            52: { lcn: 52, name: "10 Comedy", stream: "https://i.mjh.nz/.r/10peach-nsw.m3u8", isAudioOnly: false },
+            53: { lcn: 53, name: "Sky News Regional", stream: "https://i.mjh.nz/.r/sky-news-now.m3u8", isAudioOnly: false },
+            54: { lcn: 54, name: "Gecko", stream: "https://i.mjh.nz/.r/10-geckotv.m3u8", isAudioOnly: false },
+            56: { lcn: 56, name: "You TV", stream: "https://i.mjh.nz/.r/10-youtv.m3u8", isAudioOnly: false },
+            6: { lcn: 6, name: "7 HD Seven", stream: "https://i.mjh.nz/.r/seven-syd.m3u8", isAudioOnly: false },
+            60: { lcn: 60, name: "7 HD", stream: "https://i.mjh.nz/.r/seven-syd.m3u8", isAudioOnly: false },
+            62: { lcn: 62, name: "7two HD", stream: "https://i.mjh.nz/.r/7two-syd.m3u8", isAudioOnly: false },
+            64: { lcn: 64, name: "7mate HD", stream: "https://i.mjh.nz/.r/7mate-syd.m3u8", isAudioOnly: false },
+            65: { lcn: 65, name: "7Bravo", stream: "https://i.mjh.nz/.r/7bravo-fast.m3u8", isAudioOnly: false },
+            66: { lcn: 66, name: "7flix", stream: "https://i.mjh.nz/.r/7flix-syd.m3u8", isAudioOnly: false },
+            67: { lcn: 67, name: "TVSN", stream: "https://i.mjh.nz/.r/tvsn-fast.m3u8", isAudioOnly: false },
+            68: { lcn: 68, name: "Racing.com", stream: "https://i.mjh.nz/.r/racing-fast.m3u8", isAudioOnly: false },
+            8: { lcn: 8, name: "Nine", stream: "https://i.mjh.nz/.r/channel-9-nsw.m3u8", isAudioOnly: false },
+            80: { lcn: 80, name: "9HD", stream: "https://i.mjh.nz/.r/channel-9-nsw.m3u8", isAudioOnly: false },
+            81: { lcn: 81, name: "Nine far north coast", stream: "https://i.mjh.nz/.r/channel-9-nsw.m3u8", isAudioOnly: false },
+            82: { lcn: 82, name: "9Gem", stream: "https://i.mjh.nz/.r/gem-nsw.m3u8", isAudioOnly: false },
+            83: { lcn: 83, name: "9Go!", stream: "https://i.mjh.nz/.r/go-nsw.m3u8", isAudioOnly: false },
+            84: { lcn: 84, name: "9Life", stream: "https://i.mjh.nz/.r/life-nsw.m3u8", isAudioOnly: false },
+            85: { lcn: 85, name: "9Gem HD", stream: "https://i.mjh.nz/.r/gem-nsw.m3u8", isAudioOnly: false },
+            88: { lcn: 88, name: "9Go! HD", stream: "https://i.mjh.nz/.r/go-nsw.m3u8", isAudioOnly: false },
+            
+            // Audio Channels - Using proxy for CORS issues with ABC streams
+            25: { lcn: 25, name: "ABC Radio Sydney", stream: `${API_BASE}/api/stream-proxy/25`, isAudioOnly: true },
+            26: { lcn: 26, name: "Radio National", stream: `${API_BASE}/api/stream-proxy/26`, isAudioOnly: true },
+            27: { lcn: 27, name: "ABC Classic", stream: `${API_BASE}/api/stream-proxy/27`, isAudioOnly: true },
+            28: { lcn: 28, name: "Triple J", stream: `${API_BASE}/api/stream-proxy/28`, isAudioOnly: true },
+            29: { lcn: 29, name: "Triple J Unearthed", stream: `${API_BASE}/api/stream-proxy/29`, isAudioOnly: true },
+            200: { lcn: 200, name: "Double J", stream: `${API_BASE}/api/stream-proxy/200`, isAudioOnly: true },
+            201: { lcn: 201, name: "ABC Jazz", stream: `${API_BASE}/api/stream-proxy/201`, isAudioOnly: true },
+            202: { lcn: 202, name: "ABC Kids Listen", stream: `${API_BASE}/api/stream-proxy/202`, isAudioOnly: true },
+            203: { lcn: 203, name: "ABC Country", stream: `${API_BASE}/api/stream-proxy/203`, isAudioOnly: true },
+            204: { lcn: 204, name: "ABC NewsRadio", stream: `${API_BASE}/api/stream-proxy/204`, isAudioOnly: true },
+            301: { lcn: 301, name: "SBS Radio 1", stream: "https://i.mjh.nz/.r/sbs-sbs-radio-1.m3u8", isAudioOnly: true },
+            302: { lcn: 302, name: "SBS Radio 2", stream: "https://i.mjh.nz/.r/sbs-sbs-radio-2.m3u8", isAudioOnly: true },
+            303: { lcn: 303, name: "SBS Radio 3", stream: "https://i.mjh.nz/.r/sbs-sbs-radio-3.m3u8", isAudioOnly: true },
+            304: { lcn: 304, name: "SBS Arabic", stream: "https://i.mjh.nz/.r/sbs-sbs-pop-araby.m3u8", isAudioOnly: true },
+            305: { lcn: 305, name: "SBS South Asian", stream: "https://i.mjh.nz/.r/sbs-sbs-pop-desi.m3u8", isAudioOnly: true },
+            306: { lcn: 306, name: "SBS Chill", stream: "https://i.mjh.nz/.r/sbs-sbs-chill.m3u8", isAudioOnly: true },
+            307: { lcn: 307, name: "SBS PopAsia", stream: "https://i.mjh.nz/.r/sbs-sbs-pop-asia.m3u8", isAudioOnly: true },
+        };
+
+        const CHANNEL_LIST = Object.keys(CHANNELS).map(Number).sort((a, b) => a - b);
+
+        class SmartTV {
+            constructor() {
+                this.currentChannelLcn = 2;  // Currently playing channel
+                this.displayChannelLcn = 2;  // Channel shown in UI (updates immediately)
+                this.targetChannelLcn = 2;   // Channel we're trying to load
+                this.currentLoadId = null;   // Unique ID for current load operation
+                this.programs = {};
+                this.hasStarted = false;
+                this.loadingStream = false;
+                this.streamAbortController = null;
+                
+                this.videoElement = null;
+                this.audioElement = null;
+                this.hls = null;
+                this.audioHls = null;
+                this.vizTimer = null;
+                this.vizPhase = 0;
+                this.guideTimelineIndicator = null;
+                // Track whether the user has explicitly muted audio.  The
+                // initial value is false (unmuted) regardless of the
+                // underlying media element state; the first mute toggle
+                // will explicitly set the muted properties.
+                this.isMuted = false;
+                
+                this.guideSettings = {
+                    pixelsPerMinute: 4,
+                    startTime: null,
+                    endTime: null
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                this.createElements();
+                this.loadTVGuide();
+                this.setupEventListeners();
+                this.startTimers();
+            }
+            
+            createElements() {
+                const root = document.getElementById('root');
+                
+                // Start overlay
+                this.startOverlay = this.createElement('div', 'start-overlay', {}, [
+                    this.createElement('div', 'start-content', {}, [
+                        this.createElement('div', 'start-icon', {}, '📺'),
+                        this.createElement('h1', 'start-title', {}, 'Lismore Smart TV'),
+                        this.createElement('p', 'start-subtitle', {}, 'Click anywhere to start watching'),
+                        this.createElement('div', 'server-warning', {}, [
+                            this.createElement('strong', '', {}, '✨ Enhanced: '),
+                            this.createElement('span', '', {}, 'Instant channel switching + Full TV Guide + Working audio!')
+                        ]),
+                        this.createElement('button', 'start-button', {}, 'Start TV Experience')
+                    ])
+                ]);
+                
+                // Main container
+                this.container = this.createElement('div', 'tv-container cursor-visible', {}, [
+                    this.createElement('div', 'video-container', {}, [
+                        // Video element
+                        this.videoElement = this.createElement('video', 'video-player', {
+                            autoplay: false,
+                            muted: true,
+                            playsInline: true,
+                            crossorigin: "anonymous"
+                        }),
+                        
+                        // Audio display
+                        this.createElement('div', 'audio-display', {}, [
+                            this.createElement('div', 'audio-container', {}, [
+                                this.createElement('div', 'audio-icon', {}, '🎵'),
+                                this.createElement('div', 'audio-channel-name', {}, 'Loading...'),
+                                this.createElement('div', 'audio-channel-lcn', {}, 'Channel 0'),
+                                this.createElement('div', 'audio-visualizer', {}, 
+                                    Array.from({length: 24}, (_, i) => 
+                                        this.createElement('div', 'audio-bar', { style: 'height: 30px;' })
+                                    )
+                                )
+                            ])
+                        ]),
+                        
+                        // Loading overlay
+                        this.createElement('div', 'loading-overlay', {}, [
+                            this.createElement('div', 'loading-spinner'),
+                            this.createElement('div', '', {}, 'Loading stream...')
+                        ]),
+                        
+                        // Hidden audio element
+                        this.audioElement = this.createElement('audio', '', {
+                            autoplay: false,
+                            crossorigin: "anonymous",
+                            style: 'display: none;'
+                        })
+                    ]),
+                    
+                    // Channel info overlay
+                    this.createElement('div', 'channel-info', {}, [
+                        this.createElement('div', 'channel-info-content', {}, [
+                            this.createElement('div', 'channel-number', {}, '2'),
+                            this.createElement('div', 'channel-details', {}, [
+                                this.createElement('h3', '', {}, 'ABC TV'),
+                                this.createElement('div', 'audio-indicator', {}, '🔊 AUDIO ONLY'),
+                                this.createElement('div', 'program-title', {}, 'Ready to watch'),
+                                this.createElement('div', 'program-time', {}, ''),
+                                this.createElement('div', 'progress-bar', { style: 'display: none;' }, [
+                                    this.createElement('div', 'progress-fill', { style: 'width: 0%;' })
+                                ]),
+                                this.createElement('div', 'guide-hint', {}, 'Press G, Space or Enter for Guide')
+                            ])
+                        ])
+                    ]),
+                    
+                    // Connection status
+                    this.createElement('div', 'connection-status connecting', {}, 'Ready'),
+                    
+                    // Controls hint
+                    this.createElement('div', 'controls-hint visible', {}, 
+                        '↑↓ or scroll: Change channels | G/Space: Guide | M: Mute | ESC: Close'
+                    ),
+                    
+                    // Error message
+                    this.createElement('div', 'error-message', {}, '')
+                ]);
+
+                // Mute indicator (hidden by default).  When the user presses
+                // the mute key, this icon will appear in the bottom-right
+                // corner to signify that audio is muted.
+                this.muteIndicator = this.createElement('div', 'mute-indicator hidden', {}, '🔇');
+
+                // Append the mute indicator to the container
+                this.container.appendChild(this.muteIndicator);
+                
+                // Full TV Guide with timeline
+                this.guideElement = this.createElement('div', 'tv-guide', {});
+                
+                root.appendChild(this.startOverlay);
+                root.appendChild(this.container);
+                root.appendChild(this.guideElement);
+            }
+            
+            createElement(tag, className = '', attributes = {}, children = []) {
+                const element = document.createElement(tag);
+                if (className) element.className = className;
+                
+                Object.entries(attributes).forEach(([key, value]) => {
+                    if (key === 'style') {
+                        element.style.cssText = value;
+                    } else {
+                        element.setAttribute(key, value);
+                    }
+                });
+                
+                if (typeof children === 'string') {
+                    element.textContent = children;
+                } else if (Array.isArray(children)) {
+                    children.forEach(child => {
+                        if (child) element.appendChild(child);
+                    });
+                }
+                
+                return element;
+            }
+            
+            async loadTVGuide() {
+                try {
+                    const response = await fetch(`${API_BASE}/api/tv-guide`);
+                    if (response.ok) {
+                        this.programs = await response.json();
+                        this.buildTVGuide();
+                    } else {
+                        throw new Error('Failed to load guide');
+                    }
+                } catch (error) {
+                    // Fallback: generate a basic static guide
+                    try {
+                        const now = new Date();
+                        const startTime = new Date(now);
+                        startTime.setHours(startTime.getHours() - 2, 0, 0, 0);
+                        const endTime = new Date(startTime);
+                        endTime.setHours(startTime.getHours() + 6);
+                        this.programs = {};
+                        CHANNEL_LIST.filter(lcn => !CHANNELS[lcn].isAudioOnly).forEach(lcn => {
+                            this.programs[lcn] = [];
+                            let slotStart = new Date(startTime);
+                            let counter = 1;
+                            while (slotStart < endTime) {
+                                const slotEnd = new Date(slotStart.getTime() + 30 * 60 * 1000);
+                                this.programs[lcn].push({
+                                    title: `Sample Program ${counter}`,
+                                    description: '',
+                                    category: 'General',
+                                    start: slotStart.toISOString(),
+                                    stop: slotEnd.toISOString(),
+                                    isLive: slotStart <= now && now < slotEnd,
+                                    progress: 0,
+                                    durationMins: 30
+                                });
+                                slotStart = new Date(slotEnd);
+                                counter++;
+                            }
+                        });
+                        this.buildTVGuide();
+                        this.showError('Displaying preview - live guide unavailable');
+                    } catch (fallbackError) {
+                        this.showError('Could not load TV guide');
+                    }
+                }
+            }
+            
+            buildTVGuide() {
+                const now = new Date();
+                const startTime = new Date(now);
+                startTime.setHours(startTime.getHours() - 2, 0, 0, 0);
+                const endTime = new Date(startTime);
+                endTime.setHours(endTime.getHours() + 6);
+                
+                this.guideSettings.startTime = startTime;
+                this.guideSettings.endTime = endTime;
+                
+                // Calculate total minutes once for reuse
+                const totalMinutes = (endTime - startTime) / (1000 * 60);
+                
+                this.guideElement.innerHTML = '';
+                
+                // Header
+                const header = this.createElement('div', 'guide-header', {}, [
+                    this.createElement('div', 'guide-header-left', {}, [
+                        this.createElement('div', 'guide-logo', {}, '📺 TV Guide'),
+                        this.createElement('div', '', {}, [
+                            this.createElement('div', 'guide-time', {}, this.formatTime(now)),
+                            this.createElement('div', 'guide-date', {}, this.formatDate(now))
+                        ])
+                    ]),
+                    this.createElement('button', 'guide-close', {}, '✕')
+                ]);
+                
+                header.querySelector('.guide-close').addEventListener('click', () => this.hideGuide());
+                
+                // Container
+                const container = this.createElement('div', 'guide-container');
+                
+                // Time header
+                const timeHeader = this.createElement('div', 'time-header', {}, [
+                    this.createElement('div', 'time-header-channel', {}, 'Channels')
+                ]);
+                
+                const timeSlotsWrapper = this.createElement('div', 'time-slots-wrapper');
+                const timeSlots = this.createElement('div', 'time-slots');
+                
+                // Create time slots - fixed number to match available space
+                const slotCount = Math.ceil(totalMinutes / 30); // 30-minute slots
+                
+                for (let i = 0; i < slotCount; i++) {
+                    const time = new Date(startTime.getTime() + i * 30 * 60 * 1000);
+                    const isNow = Math.abs(time - now) < 30 * 60 * 1000;
+                    const slot = this.createElement('div', `time-slot ${isNow ? 'current' : ''}`, {}, [
+                        this.createElement('div', '', {}, this.formatTime(time)),
+                        this.createElement('div', '', { style: 'font-size: 0.625rem; opacity: 0.7;' }, 
+                            time.toLocaleDateString('en-AU', { weekday: 'short' }))
+                    ]);
+                    timeSlots.appendChild(slot);
+                }
+                
+                timeSlotsWrapper.appendChild(timeSlots);
+                timeHeader.appendChild(timeSlotsWrapper);
+                
+                // Channels container
+                const channelsContainer = this.createElement('div', 'channels-container');
+                
+                // TV channels wrapper: holds only the television channel rows. The
+                // timeline indicator is placed inside this wrapper so that its
+                // height automatically matches the TV channels and never overlaps
+                // the radio channels section.
+                const tvWrapper = this.createElement('div', 'tv-channels-wrapper');
+                
+                // TV channels
+                const tvChannels = CHANNEL_LIST.filter(lcn => !CHANNELS[lcn].isAudioOnly);
+                tvChannels.forEach(lcn => {
+                    this.createChannelRow(tvWrapper, lcn, startTime, endTime, now, totalMinutes);
+                });
+                
+                // Append TV wrapper to container
+                channelsContainer.appendChild(tvWrapper);
+                
+                // Audio channels section
+                const audioChannels = CHANNEL_LIST.filter(lcn => CHANNELS[lcn].isAudioOnly);
+                if (audioChannels.length > 0) {
+                    const audioSection = this.createElement('div', 'audio-channels-section', {}, [
+                        this.createElement('div', 'audio-section-title', {}, '🎵 RADIO CHANNELS'),
+                        this.createElement('div', 'audio-channels-grid', {},
+                            audioChannels.map(lcn => {
+                                const channel = CHANNELS[lcn];
+                                const card = this.createElement('div', 'audio-channel-card', {}, [
+                                    this.createElement('div', 'audio-channel-number', {}, lcn.toString()),
+                                    this.createElement('div', 'audio-channel-name', {}, channel.name)
+                                ]);
+                                card.addEventListener('click', () => this.switchToChannel(lcn));
+                                return card;
+                            })
+                        )
+                    ]);
+                    channelsContainer.appendChild(audioSection);
+                }
+                
+                container.appendChild(timeHeader);
+                container.appendChild(channelsContainer);
+                
+                // Calculate the current time offset in minutes and convert to pixels using
+                // the configured pixelsPerMinute value. The indicator's left position
+                // is based on the actual width of the channel list rather than a
+                // fixed rem value so it remains accurate on different font sizes.
+                const offsetMinutes = (now - startTime) / 60000;
+                const offsetPx = offsetMinutes * this.guideSettings.pixelsPerMinute;
+
+                // Determine the width of the channel header (the list of LCNs) so the
+                // timeline line aligns with the start of the program grid. If
+                // channel rows exist, use the first one's header width; otherwise
+                // fallback to 16rem converted to pixels based on current root font.
+                let channelHeaderWidth = 0;
+                const firstHeader = channelsContainer.querySelector('.channel-header');
+                if (firstHeader && firstHeader.offsetWidth) {
+                    channelHeaderWidth = firstHeader.offsetWidth;
+                } else {
+                    // Compute 16rem in pixels based on root font size. When the
+                    // channels are not yet attached to the DOM the header
+                    // measurement will be zero, so fall back to the default
+                    // channel list width of 16rem.
+                    const rootFont = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+                    channelHeaderWidth = 16 * rootFont;
+                }
+
+                // Create a single timeline indicator that tracks the current time. The
+                // indicator lives inside the TV channel wrapper so its height matches
+                // the number of TV channels and never overlaps the radio section. Its
+                // height will be set in updateTimelineHeight().
+                const leftPosition = channelHeaderWidth + offsetPx;
+                const timeIndicator = this.createElement('div', 'time-indicator', {
+                    style: `
+                        position: absolute;
+                        left: ${leftPosition}px;
+                        top: 0;
+                        z-index: 10;
+                        pointer-events: none;
+                    `
+                });
+
+                // Store reference to timeline for updates
+                this.guideTimelineIndicator = timeIndicator;
+                // Append the indicator to the TV wrapper so it only spans TV channels
+                tvWrapper.appendChild(timeIndicator);
+                
+                this.guideElement.appendChild(header);
+                this.guideElement.appendChild(container);
+
+                // We intentionally do not call updateTimelineHeight here.  The
+                // timeline indicator begins collapsed (height: 0) while the guide
+                // is hidden.  When the guide is shown via toggleGuide(),
+                // updateTimelineHeight() will be invoked to expand the
+                // indicator with a smooth animation and correctly position it.
+            }
+            
+            createChannelRow(container, lcn, startTime, endTime, now, totalMinutes) {
+                const channel = CHANNELS[lcn];
+                const programs = this.programs[lcn] || [];
+                
+                const row = this.createElement('div', 'channel-row');
+                
+                // Channel header
+                const channelHeader = this.createElement('div', 'channel-header', {}, [
+                    this.createElement('div', 'channel-logo', {}, lcn.toString()),
+                    this.createElement('div', 'channel-text', {}, [
+                        this.createElement('div', 'channel-name', {}, channel.name),
+                        this.createElement('div', 'channel-number-small', {}, `Channel ${lcn}`)
+                    ])
+                ]);
+                
+                channelHeader.addEventListener('click', () => this.switchToChannel(lcn));
+                
+                // Programs row
+                const programsRow = this.createElement('div', 'programs-row');
+                const programsContainer = this.createElement('div', 'programs-container');
+                
+                // Sort programs by start time and process them to avoid overlaps
+                const sortedPrograms = programs
+                    .filter(program => {
+                        const progStart = new Date(program.start);
+                        const progEnd = new Date(program.stop);
+                        return progEnd >= startTime && progStart <= endTime;
+                    })
+                    .sort((a, b) => new Date(a.start) - new Date(b.start));
+                
+                // Find the currently running program to align it with the timeline
+                const currentProgram = sortedPrograms.find(program => {
+                    const progStart = new Date(program.start);
+                    const progEnd = new Date(program.stop);
+                    return progStart <= now && now < progEnd;
+                });
+
+                let timelineAlignmentOffset = 0;
+                
+                // If there's a current program, calculate the alignment offset
+                if (currentProgram) {
+                    const progStart = new Date(currentProgram.start);
+                    const scheduleOffsetMinutes = (progStart - startTime) / (1000 * 60);
+                    const actualOffsetMinutes = (now - startTime) / (1000 * 60);
+                    
+                    // Calculate how much the program is running ahead or behind schedule
+                    const alignmentDriftMinutes = actualOffsetMinutes - scheduleOffsetMinutes;
+                    timelineAlignmentOffset = (alignmentDriftMinutes / totalMinutes) * 100; // Convert to percentage
+                }
+                
+                let lastEndPercent = 0;
+                
+                sortedPrograms.forEach((program, index) => {
+                    const progStart = new Date(program.start);
+                    const progEnd = new Date(program.stop);
+                    
+                    const displayStart = Math.max(progStart, startTime);
+                    const displayEnd = Math.min(progEnd, endTime);
+                    
+                    // Calculate position as percentage
+                    let leftPercent = ((displayStart - startTime) / (1000 * 60)) / totalMinutes * 100;
+                    const widthPercent = ((displayEnd - displayStart) / (1000 * 60)) / totalMinutes * 100;
+                    
+                    // Apply timeline alignment offset to all programs
+                    leftPercent += timelineAlignmentOffset;
+                    
+                    // Ensure no overlap with previous program
+                    if (leftPercent < lastEndPercent) {
+                        leftPercent = lastEndPercent;
+                    }
+                    
+                    // Calculate actual width accounting for the gap
+                    const actualWidth = Math.max(widthPercent, 6); // Minimum 6% width
+                    lastEndPercent = leftPercent + actualWidth + 0.2; // Add small gap
+                    
+                    let className = 'program-cell';
+                    if (progStart <= now && now < progEnd) {
+                        className += ' live';
+                    } else if (progEnd < now) {
+                        className += ' past';
+                    } else {
+                        className += ' future';
+                    }
+                    
+                    const programCell = this.createElement('div', className, {
+                        style: `left: ${leftPercent}%; width: ${actualWidth}%;`
+                    }, [
+                        this.createElement('div', 'program-cell-title', {}, program.title),
+                        this.createElement('div', 'program-cell-time', {}, 
+                            `${this.formatTime(progStart)} - ${this.formatTime(progEnd)}`),
+                        this.createElement('div', 'program-cell-duration', {}, 
+                            `${program.durationMins || Math.round((progEnd - progStart) / 60000)} min`)
+                    ]);
+                    
+                    if (program.isLive) {
+                        programCell.appendChild(this.createElement('div', 'live-indicator', {}, '● LIVE'));
+                    }
+                    
+                    programCell.addEventListener('click', () => this.switchToChannel(lcn));
+                    programsContainer.appendChild(programCell);
+                });
+                
+                programsRow.appendChild(programsContainer);
+                
+                row.appendChild(channelHeader);
+                row.appendChild(programsRow);
+                container.appendChild(row);
+            }
+            
+            // NEW: Get current program for a channel
+            getCurrentProgram(lcn) {
+                const programs = this.programs[lcn] || [];
+                const now = new Date();
+                
+                return programs.find(program => {
+                    const progStart = new Date(program.start);
+                    const progEnd = new Date(program.stop);
+                    return progStart <= now && now < progEnd;
+                });
+            }
+            
+            formatTime(date) {
+                return date.toLocaleTimeString('en-AU', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: false 
+                });
+            }
+            
+            formatDate(date) {
+                return date.toLocaleDateString('en-AU', { 
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long'
+                });
+            }
+            
+            // IMMEDIATE UI UPDATE
+            switchToChannel(lcn) {
+                this.displayChannelLcn = lcn;
+                this.updateChannelDisplay(CHANNELS[lcn]);
+                this.showChannelInfo();
+                this.loadChannelStream(lcn);
+            }
+            
+            // BACKGROUND STREAM LOADING
+            async loadChannelStream(lcn) {
+                const channel = CHANNELS[lcn];
+                const loadId = Date.now() + Math.random();
+                this.currentLoadId = loadId;
+                
+                if (this.loadingStream && this.targetChannelLcn === lcn) {
+                    return;
+                }
+                
+                this.targetChannelLcn = lcn;
+                
+                if (this.streamAbortController) {
+                    this.streamAbortController.abort();
+                }
+                this.streamAbortController = new AbortController();
+                
+                if (this.currentChannelLcn !== lcn) {
+                    this.showLoading();
+                    this.loadingStream = true;
+                }
+                
+                try {
+                    await this.stopAllStreams();
+                    
+                    if (this.currentLoadId !== loadId) return;
+                    if (this.displayChannelLcn !== lcn) return;
+                    
+                    await this.loadStream(channel);
+                    
+                    if (this.currentLoadId === loadId && this.displayChannelLcn === lcn) {
+                        this.currentChannelLcn = lcn;
+                        this.updateConnectionStatus('connected');
+                    }
+                    
+                } catch (error) {
+                    if (this.currentLoadId === loadId && error.name !== 'AbortError') {
+                        this.updateConnectionStatus('error');
+                        this.showError(`Failed to load ${channel.name}`);
+                    }
+                } finally {
+                    if (this.currentLoadId === loadId) {
+                        this.hideLoading();
+                        this.loadingStream = false;
+                    }
+                }
+            }
+            
+            async stopAllStreams() {
+                if (this.hls) {
+                    this.hls.destroy();
+                    this.hls = null;
+                }
+                
+                if (this.audioHls) {
+                    this.audioHls.destroy();
+                    this.audioHls = null;
+                }
+                
+                this.videoElement.pause();
+                this.videoElement.removeAttribute('src');
+                this.videoElement.load();
+                
+                this.audioElement.pause();
+                this.audioElement.removeAttribute('src');
+                this.audioElement.load();
+                
+                this.stopAudioVisualization();
+            }
+            
+            async loadStream(channel) {
+                const isAudio = channel.isAudioOnly;
+                const mediaElement = isAudio ? this.audioElement : this.videoElement;
+                const audioDisplay = this.container.querySelector('.audio-display');
+                
+                if (isAudio) {
+                    this.videoElement.style.display = 'none';
+                    audioDisplay.classList.add('active');
+                    this.updateAudioDisplay(channel);
+                } else {
+                    this.videoElement.style.display = 'block';
+                    audioDisplay.classList.remove('active');
+                }
+                
+                return new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        reject(new Error('Stream loading timeout'));
+                    }, 15000);
+                    
+                    const cleanup = () => {
+                        clearTimeout(timeout);
+                        mediaElement.removeEventListener('loadeddata', onSuccess);
+                        mediaElement.removeEventListener('error', onError);
+                        mediaElement.removeEventListener('canplay', onCanPlay);
+                    };
+                    
+                    const onSuccess = () => {
+                        cleanup();
+                        if (isAudio) this.startAudioVisualization();
+                        resolve();
+                    };
+                    
+                    const onCanPlay = () => {
+                        cleanup();
+                        if (isAudio) this.startAudioVisualization();
+                        resolve();
+                    };
+                    
+                    const onError = (error) => {
+                        cleanup();
+                        reject(new Error(`Failed to load ${channel.name}`));
+                    };
+                    
+                    mediaElement.addEventListener('loadeddata', onSuccess, { once: true });
+                    mediaElement.addEventListener('canplay', onCanPlay, { once: true });
+                    mediaElement.addEventListener('error', onError, { once: true });
+                    
+                    mediaElement.addEventListener('loadedmetadata', () => {
+                        for (let i = 0; i < mediaElement.textTracks.length; i++) {
+                            mediaElement.textTracks[i].mode = 'disabled';
+                        }
+                    });
+                    
+                    if (channel.stream.includes('.m3u8')) {
+                        if (Hls.isSupported()) {
+                            const hls = new Hls({
+                                enableWorker: false,
+                                lowLatencyMode: false,
+                                backBufferLength: 30,
+                                maxBufferLength: 60,
+                                autoStartLoad: true,
+                                startLevel: -1,
+                                debug: false
+                            });
+                            
+                            if (isAudio) {
+                                this.audioHls = hls;
+                            } else {
+                                this.hls = hls;
+                            }
+                            
+                            hls.loadSource(channel.stream);
+                            hls.attachMedia(mediaElement);
+                            
+                            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                                if (hls.subtitleTracks) {
+                                    hls.subtitleTrack = -1;
+                                }
+                                
+                                mediaElement.play().catch(err => {
+                                    if (!err.message.includes('user didn\'t interact') && 
+                                        !err.message.includes('interrupted') &&
+                                        err.name !== 'AbortError') {
+                                        console.warn('Play error:', err);
+                                    }
+                                });
+                            });
+                            
+                            hls.on(Hls.Events.ERROR, (event, data) => {
+                                if (data.fatal) {
+                                    onError(new Error(data.details || 'HLS error'));
+                                }
+                            });
+                            
+                        } else if (mediaElement.canPlayType('application/vnd.apple.mpegurl')) {
+                            mediaElement.src = channel.stream;
+                            mediaElement.play().catch(err => {
+                                if (!err.message.includes('user didn\'t interact') && 
+                                    !err.message.includes('interrupted') &&
+                                    err.name !== 'AbortError') {
+                                    console.warn('Play error:', err);
+                                }
+                            });
+                        } else {
+                            reject(new Error('HLS not supported'));
+                        }
+                    } else {
+                        mediaElement.src = channel.stream;
+                        mediaElement.play().catch(err => {
+                            if (!err.message.includes('user didn\'t interact') && 
+                                !err.message.includes('interrupted') &&
+                                err.name !== 'AbortError') {
+                                console.warn('Play error:', err);
+                            }
+                        });
+                    }
+                });
+            }
+            
+            // ENHANCED: Now shows current program information
+            updateChannelDisplay(channel) {
+                this.container.querySelector('.channel-number').textContent = channel.lcn;
+                this.container.querySelector('.channel-details h3').textContent = channel.name;
+                
+                const audioIndicator = this.container.querySelector('.audio-indicator');
+                audioIndicator.style.display = channel.isAudioOnly ? 'block' : 'none';
+                
+                const programTitle = this.container.querySelector('.program-title');
+                const programTime = this.container.querySelector('.program-time');
+                const progressBar = this.container.querySelector('.progress-bar');
+                const progressFill = this.container.querySelector('.progress-fill');
+                
+                // Get current program for this channel
+                const currentProgram = this.getCurrentProgram(channel.lcn);
+                
+                if (currentProgram) {
+                    // Show current program information
+                    programTitle.textContent = currentProgram.title;
+                    
+                    const startTime = new Date(currentProgram.start);
+                    const endTime = new Date(currentProgram.stop);
+                    programTime.textContent = `${this.formatTime(startTime)} - ${this.formatTime(endTime)}`;
+                    
+                    // Show progress bar with current progress
+                    progressBar.style.display = 'block';
+                    progressFill.style.width = `${currentProgram.progress || 0}%`;
+                } else {
+                    // No current program info available
+                    if (channel.isAudioOnly) {
+                        programTitle.textContent = 'Live Radio';
+                        programTime.textContent = 'Now Playing';
+                    } else {
+                        programTitle.textContent = 'Live Television';
+                        programTime.textContent = 'Now Broadcasting';
+                    }
+                    
+                    // Hide progress bar when no program info
+                    progressBar.style.display = 'none';
+                }
+            }
+            
+            updateAudioDisplay(channel) {
+                this.container.querySelector('.audio-channel-name').textContent = channel.name;
+                this.container.querySelector('.audio-channel-lcn').textContent = `Channel ${channel.lcn}`;
+            }
+            
+            startAudioVisualization() {
+                this.stopAudioVisualization();
+                
+                this.vizTimer = setInterval(() => {
+                    this.vizPhase += 0.2;
+                    const bars = this.container.querySelectorAll('.audio-bar');
+                    bars.forEach((bar, i) => {
+                        const height = 20 + 50 * Math.abs(Math.sin(this.vizPhase + i * 0.5));
+                        bar.style.height = `${height}px`;
+                    });
+                }, 100);
+            }
+            
+            stopAudioVisualization() {
+                if (this.vizTimer) {
+                    clearInterval(this.vizTimer);
+                    this.vizTimer = null;
+                }
+            }
+            
+            updateConnectionStatus(status) {
+                const statusElement = this.container.querySelector('.connection-status');
+                statusElement.className = `connection-status ${status}`;
+                
+                const statusText = {
+                    connecting: 'Loading...',
+                    connected: '● LIVE',
+                    error: '⚠ Error'
+                };
+                
+                statusElement.textContent = statusText[status] || 'Ready';
+            }
+
+            /**
+             * Toggle the mute state of the current media elements.  When
+             * invoked, this method flips the internal isMuted flag,
+             * updates the muted property on both the video and audio
+             * elements, and shows or hides the mute indicator accordingly.
+             */
+            toggleMute() {
+                // Flip the user mute state
+                this.isMuted = !this.isMuted;
+                // Apply the muted flag to both audio and video elements
+                // If the current channel is audio-only, only the audio
+                // element will be heard, but updating both is harmless.
+                this.videoElement.muted = this.isMuted;
+                this.audioElement.muted = this.isMuted;
+                // Toggle the mute indicator visibility based on isMuted
+                if (this.isMuted) {
+                    this.muteIndicator.classList.remove('hidden');
+                } else {
+                    this.muteIndicator.classList.add('hidden');
+                }
+            }
+            
+            showLoading() {
+                this.container.querySelector('.loading-overlay').classList.add('visible');
+            }
+            
+            hideLoading() {
+                this.container.querySelector('.loading-overlay').classList.remove('visible');
+            }
+            
+            showError(message) {
+                const errorElement = this.container.querySelector('.error-message');
+                errorElement.textContent = message;
+                errorElement.classList.add('visible');
+                
+                setTimeout(() => {
+                    errorElement.classList.remove('visible');
+                }, 3000);
+            }
+            
+            showChannelInfo() {
+                const channelInfo = this.container.querySelector('.channel-info');
+                channelInfo.classList.add('visible');
+                
+                clearTimeout(this.channelInfoTimer);
+                this.channelInfoTimer = setTimeout(() => {
+                    channelInfo.classList.remove('visible');
+                }, 3000);
+            }
+            
+            setupEventListeners() {
+                this.startOverlay.addEventListener('click', () => this.startTV());
+                
+                let lastKeyTime = 0;
+                document.addEventListener('keydown', (e) => {
+                    if (!this.hasStarted) return;
+                    
+                    const now = Date.now();
+                    if (now - lastKeyTime < 100) return;
+                    lastKeyTime = now;
+                    
+                    switch (e.key) {
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            this.channelUp();
+                            break;
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            this.channelDown();
+                            break;
+                        case 'g':
+                        case 'G':
+                        case ' ':
+                        case 'Enter':
+                            e.preventDefault();
+                            this.toggleGuide();
+                            break;
+                        case 'Escape':
+                            this.hideGuide();
+                            break;
+                        case 'm':
+                        case 'M':
+                            // Toggle mute/unmute of the current stream
+                            e.preventDefault();
+                            this.toggleMute();
+                            break;
+                    }
+                });
+                
+                let lastWheelTime = 0;
+                document.addEventListener('wheel', (e) => {
+                    if (!this.hasStarted || this.guideElement.classList.contains('visible')) return;
+                    
+                    e.preventDefault();
+                    
+                    const now = Date.now();
+                    if (now - lastWheelTime < 100) return;
+                    lastWheelTime = now;
+                    
+                    if (e.deltaY > 0) {
+                        this.channelDown();
+                    } else {
+                        this.channelUp();
+                    }
+                }, { passive: false });
+                
+                document.addEventListener('mousemove', () => {
+                    if (this.hasStarted) this.handleMouseMove();
+                });
+            }
+            
+            startTV() {
+                this.hasStarted = true;
+                this.startOverlay.style.display = 'none';
+                this.container.classList.remove('cursor-visible');
+                // Ensure that any default muted state on the video element
+                // persists until the user toggles mute.  Pressing the
+                // mute/unmute key will unmute if currently muted.
+                this.switchToChannel(this.currentChannelLcn);
+                
+                setTimeout(() => this.hideControls(), 5000);
+            }
+            
+            channelUp() {
+                const currentIndex = CHANNEL_LIST.indexOf(this.displayChannelLcn);
+                const nextIndex = (currentIndex + 1) % CHANNEL_LIST.length;
+                this.switchToChannel(CHANNEL_LIST[nextIndex]);
+            }
+            
+            channelDown() {
+                const currentIndex = CHANNEL_LIST.indexOf(this.displayChannelLcn);
+                const prevIndex = (currentIndex - 1 + CHANNEL_LIST.length) % CHANNEL_LIST.length;
+                this.switchToChannel(CHANNEL_LIST[prevIndex]);
+            }
+            
+            toggleGuide() {
+                if (this.guideElement.classList.contains('visible')) {
+                    this.hideGuide();
+                } else {
+                    this.guideElement.classList.add('visible');
+                    // Allow the layout to settle then update the timeline height and scroll the
+                    // current channel into view. Updating the height ensures the indicator
+                    // ends before the audio channels section.
+                    setTimeout(() => {
+                        this.updateTimelineHeight();
+                        const tvChannels = CHANNEL_LIST.filter(lcn => !CHANNELS[lcn].isAudioOnly);
+                        const currentIndex = tvChannels.indexOf(this.currentChannelLcn);
+                        if (currentIndex >= 0) {
+                            const channelRows = this.guideElement.querySelectorAll('.channel-row');
+                            if (channelRows[currentIndex]) {
+                                channelRows[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }
+                    }, 100);
+                }
+            }
+            
+            hideGuide() {
+                this.guideElement.classList.remove('visible');
+                // When hiding the guide, collapse the timeline bar's height so it
+                // animates away smoothly. It will be reset when the guide is
+                // shown again via updateTimelineHeight().
+                if (this.guideTimelineIndicator) {
+                    this.guideTimelineIndicator.style.height = '0px';
+                }
+            }
+
+            /**
+             * Adjust the timeline indicator height to terminate before the radio channels
+             * section. This method should be called after the guide has been laid
+             * out and is visible, so that measurements are accurate.
+             */
+            updateTimelineHeight() {
+                const container = this.guideElement.querySelector('.guide-container');
+                if (!container || !this.guideTimelineIndicator) return;
+                // Find the wrapper that holds only the TV channels. This wrapper
+                // determines where the timeline should start and end. If it's not
+                // present the update can be skipped.
+                const tvWrapper = container.querySelector('.tv-channels-wrapper');
+                if (!tvWrapper) return;
+                const wrapperRect = tvWrapper.getBoundingClientRect();
+                // Set the height of the indicator to match the wrapper so it ends
+                // before the radio channels section. When the guide is hidden the
+                // height may be collapsed to zero.
+                this.guideTimelineIndicator.style.height = `${wrapperRect.height}px`;
+
+                // After adjusting height, recalculate the horizontal position of the
+                // indicator based on the actual width of the program grid. This
+                // ensures the bar aligns precisely with the current time.
+                this.updateTimelinePosition();
+            }
+
+            /**
+             * Calculate and set the horizontal position of the timeline indicator
+             * based on the current time and the size of the program grid. This
+             * method accounts for the width of the channel list and the total
+             * guide duration so that the indicator reflects the exact minute.
+             */
+            updateTimelinePosition() {
+                // Only proceed if the timeline and start/end times are available
+                if (!this.guideTimelineIndicator || !this.guideSettings.startTime || !this.guideSettings.endTime) return;
+
+                // Determine the width of the channel header (LCN list). If the
+                // measurement fails (e.g. before attachment) fall back to 16rem.
+                let channelHeaderWidth = 0;
+                const headerEl = this.guideElement.querySelector('.channel-header');
+                if (headerEl && headerEl.offsetWidth) {
+                    channelHeaderWidth = headerEl.offsetWidth;
+                } else {
+                    const rootFont = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+                    channelHeaderWidth = 16 * rootFont;
+                }
+
+                // Determine the total width of the guide's scrollable grid (excluding
+                // the channel header). Prefer using the scrollWidth of the
+                // programs-container (which spans the full six-hour range) so the
+                // indicator positions correctly regardless of how much of the
+                // grid is visible. Fallback to the visible width if necessary.
+                let gridWidth = 0;
+                const progContainer = this.guideElement.querySelector('.programs-container');
+                if (progContainer && progContainer.scrollWidth) {
+                    gridWidth = progContainer.scrollWidth;
+                } else {
+                    const channelsContainer = this.guideElement.querySelector('.channels-container');
+                    if (!channelsContainer) return;
+                    const containerRect = channelsContainer.getBoundingClientRect();
+                    gridWidth = containerRect.width - channelHeaderWidth;
+                }
+                if (gridWidth <= 0) return;
+
+                // Compute how far into the time range we are
+                const now = new Date();
+                const offsetMinutes = (now - this.guideSettings.startTime) / 60000;
+                const totalMinutes = (this.guideSettings.endTime - this.guideSettings.startTime) / 60000;
+                // Clamp offset to the time range to avoid overshooting
+                const clampedOffset = Math.max(0, Math.min(offsetMinutes, totalMinutes));
+
+                // Determine the width of a single 30‑minute slot by measuring
+                // the first time slot in the header.  This measurement
+                // accurately reflects the horizontal scale of the grid because
+                // each half‑hour slot is rendered with a fixed width.  Should
+                // this measurement fail (e.g. before layout), we fall back to
+                // computing the slot width from the overall grid width and
+                // number of slots.
+                let slotWidth = 0;
+                const timeSlotEl = this.guideElement.querySelector('.time-slots .time-slot');
+                if (timeSlotEl && timeSlotEl.offsetWidth) {
+                    slotWidth = timeSlotEl.offsetWidth;
+                }
+                if (!slotWidth) {
+                    // Fallback: derive slot width by dividing the grid width by
+                    // the number of half‑hour slots.  totalMinutes/30 gives
+                    // the number of slots in the guide.
+                    slotWidth = gridWidth / (totalMinutes / 30);
+                }
+                if (!slotWidth) return;
+
+                // Compute the pixel value for a single minute.  Each slot
+                // represents 30 minutes; dividing its width by 30 yields
+                // pixels per minute.
+                const pixelsPerMinute = slotWidth / 30;
+                // Calculate the horizontal offset of the indicator by
+                // multiplying the number of minutes since startTime by the
+                // pixel rate.  We then shift the line to the right by the
+                // channel header width so that it aligns with the programme grid.
+                let leftPx = channelHeaderWidth + clampedOffset * pixelsPerMinute;
+                // Clamp the indicator within the grid boundaries.  The far
+                // right boundary is channelHeaderWidth plus the total grid
+                // width; the far left boundary is the start of the grid.
+                const maxLeft = channelHeaderWidth + slotWidth * (totalMinutes / 30);
+                if (leftPx > maxLeft) leftPx = maxLeft;
+                if (leftPx < channelHeaderWidth) leftPx = channelHeaderWidth;
+                this.guideTimelineIndicator.style.left = `${leftPx}px`;
+            }
+            
+            handleMouseMove() {
+                this.container.classList.add('cursor-visible');
+                this.container.querySelector('.controls-hint').classList.add('visible');
+                
+                clearTimeout(this.cursorTimer);
+                clearTimeout(this.controlsTimer);
+                
+                this.cursorTimer = setTimeout(() => this.hideCursor(), 3000);
+                this.controlsTimer = setTimeout(() => this.hideControls(), 5000);
+            }
+            
+            hideCursor() {
+                if (!this.guideElement.classList.contains('visible')) {
+                    this.container.classList.remove('cursor-visible');
+                }
+            }
+            
+            hideControls() {
+                this.container.querySelector('.controls-hint').classList.remove('visible');
+            }
+            
+            startTimers() {
+                setInterval(() => {
+                    if (this.hasStarted && !this.loadingStream) {
+                        this.updateConnectionStatus('connected');
+                    }
+                }, 5000);
+                
+                setInterval(() => {
+                    if (this.hasStarted) {
+                        const timeElement = this.guideElement.querySelector('.guide-time');
+                        const dateElement = this.guideElement.querySelector('.guide-date');
+                        const now = new Date();
+                        
+                        if (timeElement) timeElement.textContent = this.formatTime(now);
+                        if (dateElement) dateElement.textContent = this.formatDate(now);
+                        
+                        if (this.guideSettings.startTime) {
+                            // Update the timeline indicator's position to reflect the
+                            // current time. This method calculates the correct
+                            // offset based on the grid width and current time.
+                            this.updateTimelinePosition();
+                        }
+                        
+                        // Update current channel display if channel info is visible
+                        const channelInfo = this.container.querySelector('.channel-info');
+                        if (channelInfo && channelInfo.classList.contains('visible')) {
+                            this.updateChannelDisplay(CHANNELS[this.displayChannelLcn]);
+                        }
+                    }
+                }, 60000);
+                
+                setInterval(() => {
+                    if (this.hasStarted) {
+                        this.loadTVGuide();
+                    }
+                }, 10 * 60 * 1000);
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.smartTV = new SmartTV();
+            
+            // Prevent context menu and text selection
+            document.addEventListener('contextmenu', e => e.preventDefault());
+            document.addEventListener('selectstart', e => {
+                if (!e.target.closest('.tv-guide')) {
+                    e.preventDefault();
+                }
+            });
+        });
+
+        // Global error handling
+        window.addEventListener('error', (e) => {
+            console.error('Global error:', e.error);
+        });
+
+        window.addEventListener('unhandledrejection', (e) => {
+            console.warn('Unhandled promise rejection:', e.reason);
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>
