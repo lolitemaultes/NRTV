@@ -17,12 +17,10 @@ from flask_cors import CORS
 import logging
 import sys
 
-# Configure clean logging
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
 logging.getLogger('urllib3').setLevel(logging.ERROR)
 logging.getLogger('requests').setLevel(logging.ERROR)
 
-# ANSI color codes for clean CLI
 class Colors:
     BLUE = '\033[94m'
     GREEN = '\033[92m'
@@ -142,9 +140,7 @@ class TVGuideLoader:
                 programs = self.parse_xml_guide(root)
 
                 if programs:
-                    # Normalize HD/SD duplicates to share the same program list
                     programs = self._normalize_duplicate_channels(programs)
-                    # Filter out ABC News channels to have empty guides
                     programs = self._filter_abc_news_channels(programs)
                     self.programs_cache = programs
                     self.last_loaded = now
@@ -156,7 +152,6 @@ class TVGuideLoader:
         
         print_status("Using fallback program data", "warning")
         fallback = self.generate_fallback_programs()
-        # Normalize duplicates in fallback as well
         fallback = self._normalize_duplicate_channels(fallback)
         return fallback
     
@@ -317,11 +312,10 @@ class TVGuideLoader:
         """
         filtered = dict(programs)
         
-        # Remove program data for ABC News channels
         abc_news_channels = [21, 24]
         for lcn in abc_news_channels:
             if lcn in filtered:
-                filtered[lcn] = []  # Empty program list
+                filtered[lcn] = []
         
         return filtered
 
@@ -339,30 +333,23 @@ class TVGuideLoader:
         dict
             Updated mapping with duplicate channels normalised.
         """
-        # Work on a copy to avoid mutating the original dict directly
         normalised = dict(programs)
 
         for dup_lcn, base_lcn in self.DUPLICATE_LCN_MAP.items():
             base_exists = base_lcn in normalised and normalised[base_lcn]
             dup_exists = dup_lcn in normalised and normalised[dup_lcn]
 
-            # If both exist but are different, prefer base's schedule
             if base_exists and dup_exists:
                 normalised[dup_lcn] = normalised[base_lcn]
                 continue
 
-            # If base exists but duplicate does not, copy base schedule
             if base_exists and not dup_exists:
                 normalised[dup_lcn] = normalised[base_lcn]
                 continue
 
-            # If duplicate exists but base does not, copy duplicate schedule back
             if dup_exists and not base_exists:
                 normalised[base_lcn] = normalised[dup_lcn]
                 continue
-
-            # If neither exists, nothing to normalise
-            # (e.g. XML feed omitted both channels)
 
         return normalised
 
@@ -532,7 +519,7 @@ def status():
 </head>
 <body>
     <div class="container">
-        <h1>📺 Lismore Smart TV</h1>
+        <h1>📺 Northern Rivers Television</h1>
         <div class="icon">🎬</div>
         
         <div class="status">
