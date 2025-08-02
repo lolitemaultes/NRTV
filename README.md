@@ -105,5 +105,5 @@ Streams are sourced from publicly accessible endpoints. Verify the licensing for
 ## License
 
 ```
-MIT License – see LICENSE.md
+see LICENSE.md
 ```
