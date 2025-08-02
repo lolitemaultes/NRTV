@@ -15,9 +15,37 @@ from zoneinfo import ZoneInfo
 from flask import Flask, jsonify, send_from_directory, render_template_string, Response, request
 from flask_cors import CORS
 import logging
+import sys
 
-logging.getLogger('werkzeug').setLevel(logging.WARNING)
-logging.getLogger('urllib3').setLevel(logging.WARNING)
+# Configure clean logging
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
+logging.getLogger('urllib3').setLevel(logging.ERROR)
+logging.getLogger('requests').setLevel(logging.ERROR)
+
+# ANSI color codes for clean CLI
+class Colors:
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    CYAN = '\033[96m'
+    WHITE = '\033[97m'
+    GRAY = '\033[90m'
+    BOLD = '\033[1m'
+    DIM = '\033[2m'
+    END = '\033[0m'
+
+def print_status(message, status="info"):
+    """Print clean status messages"""
+    icons = {
+        "success": f"{Colors.GREEN}✓{Colors.END}",
+        "error": f"{Colors.RED}✗{Colors.END}",
+        "warning": f"{Colors.YELLOW}⚠{Colors.END}",
+        "info": f"{Colors.BLUE}•{Colors.END}",
+        "loading": f"{Colors.CYAN}⟳{Colors.END}"
+    }
+    icon = icons.get(status, icons["info"])
+    print(f"{icon} {message}")
 
 TZ = ZoneInfo('Australia/Sydney')
 UTC = ZoneInfo('UTC')
@@ -116,13 +144,13 @@ class TVGuideLoader:
                 if programs:
                     self.programs_cache = programs
                     self.last_loaded = now
-                    print(f"✓ TV Guide loaded ({len(programs)} channels)")
+                    print_status(f"TV Guide loaded ({len(programs)} channels)", "success")
                     return programs
                     
             except Exception:
                 continue
         
-        print("⚠ Using fallback program data")
+        print_status("Using fallback program data", "warning")
         return self.generate_fallback_programs()
     
     def parse_xml_guide(self, root) -> Dict[int, List[Program]]:
@@ -735,48 +763,49 @@ def not_found(error):
 </html>
     """), 404
 
-if __name__ == '__main__':
-    print("┌" + "─" * 78 + "┐")
-    print("│" + " " * 20 + "📺 LISMORE SMART TV SERVER" + " " * 30 + "│")
-    print("├" + "─" * 78 + "┤")
-    print("│  Status: Starting up...                                              │")
-    print("│  Version: Enhanced Hybrid Mode                                       │")
-    print("│  Features: Instant switching + Full TV Guide + Working audio        │")
-    print("├" + "─" * 78 + "┤")
-    print("│                           📡 LOADING                                 │")
-    print("└" + "─" * 78 + "┘")
+def print_banner():
+    """Print clean startup banner"""
+    print(f"\n{Colors.BOLD}{Colors.CYAN}📺 NRTV Server{Colors.END}")
+    print(f"{Colors.DIM}═══════════════════════════════════════════════════════════════{Colors.END}")
+    print(f"{Colors.GREEN}Enhanced Hybrid Mode{Colors.END} • {Colors.BLUE}Instant Switching{Colors.END} • {Colors.YELLOW}Full TV Guide{Colors.END}")
     print()
+
+def print_access_info():
+    """Print access information"""
+    print(f"{Colors.BOLD}🌐 Access Points{Colors.END}")
+    print(f"{Colors.WHITE}Main Interface:{Colors.END}  {Colors.CYAN}http://localhost:5000{Colors.END}")
+    print(f"{Colors.WHITE}Server Status:{Colors.END}   {Colors.CYAN}http://localhost:5000/status{Colors.END}")
+    print(f"{Colors.WHITE}Health Check:{Colors.END}    {Colors.CYAN}http://localhost:5000/api/health{Colors.END}")
+    print()
+
+def print_controls():
+    """Print control information"""
+    print(f"{Colors.BOLD}⌨️  Controls{Colors.END}")
+    print(f"{Colors.WHITE}↑↓ Arrow Keys:{Colors.END} Change channels")
+    print(f"{Colors.WHITE}G/Space/Enter:{Colors.END} TV Guide")
+    print(f"{Colors.WHITE}M:{Colors.END} Mute • {Colors.WHITE}ESC:{Colors.END} Close Guide")
+    print()
+
+if __name__ == '__main__':
+    print_banner()
     
+    # Initialize TV guide loading with clean status
+    print_status("Initializing TV guide...", "loading")
     try:
         programs = tv_guide_loader.load_tv_guide()
         if programs:
             sample_lcn = list(programs.keys())[0]
-            sample_programs = len(programs[sample_lcn])
-            print(f"   Example: Channel {sample_lcn} has {sample_programs} programs")
-        print()
-    except Exception as e:
-        print("⚠ TV guide loading issue - will use fallback data")
-        print()
+            sample_count = len(programs[sample_lcn])
+            print_status(f"Guide loaded • Example: Channel {sample_lcn} has {sample_count} programs", "success")
+    except Exception:
+        print_status("Using fallback guide data", "warning")
     
-    print("┌" + "─" * 78 + "┐")
-    print("│" + " " * 32 + "🌐 ACCESS" + " " * 33 + "│")
-    print("├" + "─" * 78 + "┤")
-    print("│  Main Interface:  http://localhost:5000                             │")
-    print("│  Server Status:   http://localhost:5000/status                      │")
-    print("│  Health Check:    http://localhost:5000/api/health                  │")
-    print("│  TV Guide API:    http://localhost:5000/api/tv-guide                │")
-    print("├" + "─" * 78 + "┤")
-    print("│                          ⌨️ CONTROLS                                 │")
-    print("├" + "─" * 78 + "┤")
-    print("│  Channel Up/Down:  ↑↓ Arrow Keys or Mouse Wheel                     │")
-    print("│  TV Guide:         G, Space, or Enter                               │")
-    print("│  Close Guide:      Escape                                           │")
-    print("│  Channel Info:     Automatic (3 seconds)                           │")
-    print("└" + "─" * 78 + "┘")
     print()
-    print("🚀 Server starting on http://localhost:5000")
-    print("📺 Ready for connections...")
-    print()
+    print_access_info()
+    print_controls()
+    
+    print_status("Starting server on http://localhost:5000", "loading")
+    print(f"{Colors.DIM}Press Ctrl+C to stop{Colors.END}\n")
     
     try:
         app.run(
@@ -787,11 +816,9 @@ if __name__ == '__main__':
             use_reloader=False
         )
     except KeyboardInterrupt:
-        print("\n" + "─" * 60)
-        print("👋 Smart TV Server stopped by user")
+        print(f"\n{Colors.YELLOW}⚠{Colors.END} Server stopped by user")
     except Exception as e:
-        print(f"\n❌ Server error: {e}")
-        print("💡 Try checking if port 5000 is available")
+        print_status(f"Server error: {e}", "error")
+        print_status("Try checking if port 5000 is available", "info")
     finally:
-        print("📺 Server shutdown complete")
-        print("─" * 60)
+        print_status("Server shutdown complete", "info")
