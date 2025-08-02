@@ -140,8 +140,12 @@ class TVGuideLoader:
                 
                 root = ET.fromstring(response.content)
                 programs = self.parse_xml_guide(root)
-                
+
                 if programs:
+                    # Normalize HD/SD duplicates to share the same program list
+                    programs = self._normalize_duplicate_channels(programs)
+                    # Filter out ABC News channels to have empty guides
+                    programs = self._filter_abc_news_channels(programs)
                     self.programs_cache = programs
                     self.last_loaded = now
                     print_status(f"TV Guide loaded ({len(programs)} channels)", "success")
@@ -151,7 +155,10 @@ class TVGuideLoader:
                 continue
         
         print_status("Using fallback program data", "warning")
-        return self.generate_fallback_programs()
+        fallback = self.generate_fallback_programs()
+        # Normalize duplicates in fallback as well
+        fallback = self._normalize_duplicate_channels(fallback)
+        return fallback
     
     def parse_xml_guide(self, root) -> Dict[int, List[Program]]:
         """Parse XML TV guide data"""
@@ -237,7 +244,7 @@ class TVGuideLoader:
     def generate_fallback_programs(self) -> Dict[int, List[Program]]:
         """Generate fallback program data when XML loading fails"""
         
-        tv_channels = [2, 20, 21, 22, 23, 24, 3, 30, 31, 32, 33, 34, 35, 36, 
+        tv_channels = [2, 20, 22, 23, 3, 30, 31, 32, 33, 34, 35, 36, 
                       5, 50, 51, 52, 53, 54, 56, 6, 60, 62, 64, 65, 66, 67, 68,
                       8, 80, 81, 82, 83, 84, 85, 88]
         
@@ -289,8 +296,75 @@ class TVGuideLoader:
                 channel_programs.append(program)
             
             programs[lcn] = channel_programs
-        
+
         return programs
+
+    DUPLICATE_LCN_MAP = {
+        20: 2,   # ABC TV HD -> ABC TV
+        36: 34,  # NITV -> NITV HD
+        50: 5,   # 10 HD -> 10 HD Northern NSW
+        60: 6,   # 7 HD -> 7 HD Seven
+        80: 8,   # 9HD -> Nine
+        81: 8,   # Nine far north coast -> Nine
+        85: 82,  # 9Gem HD -> 9Gem
+        88: 83   # 9Go! HD -> 9Go!
+    }
+
+    def _filter_abc_news_channels(self, programs: Dict[int, List[Program]]) -> Dict[int, List[Program]]:
+        """
+        Remove program data for ABC News channels as they often show different content
+        than what's in the XML guide data.
+        """
+        filtered = dict(programs)
+        
+        # Remove program data for ABC News channels
+        abc_news_channels = [21, 24]
+        for lcn in abc_news_channels:
+            if lcn in filtered:
+                filtered[lcn] = []  # Empty program list
+        
+        return filtered
+
+    def _normalize_duplicate_channels(self, programs: Dict[int, List[Program]]) -> Dict[int, List[Program]]:
+        """
+        Ensure that duplicate HD/SD channels share the same list of programs.
+
+        Parameters
+        ----------
+        programs : dict
+            Mapping of LCN to list of Program objects.
+
+        Returns
+        -------
+        dict
+            Updated mapping with duplicate channels normalised.
+        """
+        # Work on a copy to avoid mutating the original dict directly
+        normalised = dict(programs)
+
+        for dup_lcn, base_lcn in self.DUPLICATE_LCN_MAP.items():
+            base_exists = base_lcn in normalised and normalised[base_lcn]
+            dup_exists = dup_lcn in normalised and normalised[dup_lcn]
+
+            # If both exist but are different, prefer base's schedule
+            if base_exists and dup_exists:
+                normalised[dup_lcn] = normalised[base_lcn]
+                continue
+
+            # If base exists but duplicate does not, copy base schedule
+            if base_exists and not dup_exists:
+                normalised[dup_lcn] = normalised[base_lcn]
+                continue
+
+            # If duplicate exists but base does not, copy duplicate schedule back
+            if dup_exists and not base_exists:
+                normalised[base_lcn] = normalised[dup_lcn]
+                continue
+
+            # If neither exists, nothing to normalise
+            # (e.g. XML feed omitted both channels)
+
+        return normalised
 
 tv_guide_loader = TVGuideLoader()
 
