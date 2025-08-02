@@ -850,7 +850,6 @@ def print_controls():
 if __name__ == '__main__':
     print_banner()
     
-    # Initialize TV guide loading with clean status
     print_status("Initializing TV guide...", "loading")
     try:
         programs = tv_guide_loader.load_tv_guide()
