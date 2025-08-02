@@ -18,7 +18,7 @@
 
 ---
 
-## Quick Start (bare‑metal)
+## Quick Start
 
 ```bash
 # 1. Grab the code
